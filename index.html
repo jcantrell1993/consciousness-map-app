@@ -13843,9 +13843,10 @@ const BANDS = {
         carrier: 400
     }
 };
-// Oster Curve: optimal carrier frequency for a given beat frequency
-// Delta (~2Hz) → ~100Hz, Theta (~6Hz) → ~185Hz, Alpha (~10Hz) → ~235Hz
-// Binaural beats are imperceptible above ~30-35Hz; isochronic preferred for gamma
+// Suggested carrier per band: low, soft tones (delta ~100Hz, theta ~185Hz, alpha ~235Hz).
+// These are design presets, not a published curve; beats are commonly reported as easier
+// to hear with carriers nearer 400Hz, so the Custom tab allows trying higher ones.
+// Binaural beats are imperceptible above ~30-35Hz (Oster 1973); isochronic preferred for gamma
 const BINAURAL_MAX_BEAT = 30;
 // Capability-gated mobile fallback.
 // The original code branched on user-agent alone, which treated modern flagships
@@ -14118,6 +14119,33 @@ const AUDIO_URLS = {
         "https://cdn.jsdelivr.net/gh/Suonii/nature-sound-mixer@main/sounds/ocean.mp3"
     ]
 };
+// Fade-in on every start so tones never begin at full volume in the headphones.
+const FADE_IN_SECONDS = 8;
+// Soft limiter transfer curve. Tones pass through unchanged up to the knee; peaks above
+// are rounded off toward the ceiling instead of clipping hard (all layers at 100% volume
+// reach ~1.03). The input is pre-scaled by LIMITER_PRE so raw peaks up to 1/LIMITER_PRE
+// fit in the shaper's [-1, 1] range.
+const LIMITER_PRE = 0.75;
+function softLimitCurve() {
+    const n = 4097, knee = 0.9, ceil = 0.99;
+    const curve = new Float32Array(n);
+    for(let i = 0; i < n; i++){
+        const u = i / (n - 1) * 2 - 1;
+        const raw = Math.abs(u) / LIMITER_PRE;
+        const y = raw <= knee ? raw : knee + (ceil - knee) * Math.tanh((raw - knee) / (ceil - knee));
+        curve[i] = Math.sign(u) * y;
+    }
+    return curve;
+}
+// Isochronic pulse shape: maps the LFO sine (-1..1) to a 0..1 envelope that rises and falls
+// once per cycle with steeper edges than a plain sine (double smoothstep), but no clicks.
+function isoPulseCurve() {
+    const n = 1025;
+    const curve = new Float32Array(n);
+    const smooth = (u)=>u * u * (3 - 2 * u);
+    for(let i = 0; i < n; i++)curve[i] = smooth(smooth(i / (n - 1)));
+    return curve;
+}
 class AudioEngine {
     ensureCtx() {
         // "playback" = larger output buffers: fewer dropouts over Bluetooth, less battery.
@@ -14136,25 +14164,33 @@ class AudioEngine {
     _initOutput() {
         const ctx = this.ctx;
         this.sink = ctx.createGain();
+        const pre = ctx.createGain();
+        pre.gain.value = LIMITER_PRE;
+        this.limiter = ctx.createWaveShaper();
+        this.limiter.curve = softLimitCurve();
+        this.limiter.oversample = "2x";
+        this.sink.connect(pre);
+        pre.connect(this.limiter);
         this.mediaEl = null;
         try {
             const dest = ctx.createMediaStreamDestination();
             const el = new Audio();
             el.srcObject = dest.stream;
             el.setAttribute("playsinline", "");
-            this.sink.connect(dest);
+            this.limiter.connect(dest);
             this.mediaEl = el;
         } catch  {
-            this.sink.connect(ctx.destination);
+            this.limiter.connect(ctx.destination);
         }
     }
     playOutput() {
         if (!this.mediaEl) return;
+        clearTimeout(this._pauseTimer);
         this.mediaEl.play().catch(()=>{
             // Playback blocked: send sound straight to the device instead of losing it.
             try {
-                this.sink.disconnect();
-                this.sink.connect(this.ctx.destination);
+                this.limiter.disconnect();
+                this.limiter.connect(this.ctx.destination);
             } catch  {}
         });
     }
@@ -14198,7 +14234,8 @@ class AudioEngine {
         const ctx = this.ensureCtx();
         this.playing = true;
         this.master = ctx.createGain();
-        this.master.gain.value = vol;
+        this.master.gain.value = 0;
+        this.master.gain.setTargetAtTime(vol, ctx.currentTime, FADE_IN_SECONDS / 3);
         // Dry path: master → sink
         this.master.connect(this.sink);
         // Reverb send/return (desktop only): master → reverbSend → convolver → reverbReturn → sink
@@ -14244,6 +14281,8 @@ class AudioEngine {
         this.oscR.start();
     }
     startIso(ctx, c, b, mix) {
+        // The carrier's gain follows a 0..mix pulse envelope, once per beat. (A bare sine LFO
+        // swinging through zero would pulse at twice the beat rate and suppress the carrier.)
         this.isoGain = ctx.createGain();
         this.isoGain.gain.value = 0;
         this.isoGain.connect(this.master);
@@ -14255,10 +14294,13 @@ class AudioEngine {
         this.isoLfoGain = ctx.createGain();
         this.isoLfoGain.gain.value = mix;
         this.isoLfoGain.connect(this.isoGain.gain);
+        const shaper = ctx.createWaveShaper();
+        shaper.curve = isoPulseCurve();
+        shaper.connect(this.isoLfoGain);
         this.isoLfo = ctx.createOscillator();
         this.isoLfo.type = "sine";
         this.isoLfo.frequency.value = b;
-        this.isoLfo.connect(this.isoLfoGain);
+        this.isoLfo.connect(shaper);
         this.isoLfo.start();
     }
     // Generate a looping white noise buffer (base material for all noise types)
@@ -14874,12 +14916,22 @@ class AudioEngine {
     setVolume(v) {
         if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
     }
-    setFrequencies(b, c) {
-        const t = this.ctx?.currentTime ?? 0;
-        this.oscL?.frequency.linearRampToValueAtTime(c, t + 2);
-        this.oscR?.frequency.linearRampToValueAtTime(c + b, t + 2);
-        this.isoOsc?.frequency.linearRampToValueAtTime(c, t + 2);
-        this.isoLfo?.frequency.linearRampToValueAtTime(b, t + 2);
+    // Glide to a new beat/carrier over `seconds`. Each ramp is anchored at the current value;
+    // a bare linearRamp would interpolate from the parameter's last event, which can be
+    // minutes old, so it would jump almost instantly instead of gliding.
+    setFrequencies(b, c, seconds = 2) {
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime;
+        const glide = (param, target)=>{
+            if (!param) return;
+            param.cancelScheduledValues(t);
+            param.setValueAtTime(param.value, t);
+            param.linearRampToValueAtTime(target, t + seconds);
+        };
+        glide(this.oscL?.frequency, c);
+        glide(this.oscR?.frequency, c + Math.min(b, BINAURAL_MAX_BEAT));
+        glide(this.isoOsc?.frequency, c);
+        glide(this.isoLfo?.frequency, b);
     }
     stop() {
         this.playing = false;
@@ -14913,12 +14965,22 @@ class AudioEngine {
         this.reverbReturn = null;
         this.master?.disconnect();
         this.master = null;
-        if (this.mediaEl) this.mediaEl.pause();
+        // The element plays about half a second behind the graph, so pausing it right now would
+        // cut off the tail of the fade-out. Pause a moment later unless playback has restarted.
+        if (this.mediaEl) {
+            const el = this.mediaEl;
+            clearTimeout(this._pauseTimer);
+            this._pauseTimer = setTimeout(()=>{
+                if (!this.playing) el.pause();
+            }, 1200);
+        }
     }
     constructor(){
         this.ctx = null;
         this.sink = null;
+        this.limiter = null;
         this.mediaEl = null;
+        this._pauseTimer = null;
         this.oscL = null;
         this.oscR = null;
         this.gainL = null;
@@ -16094,12 +16156,22 @@ function Terminal() {
         if (timerRef.current) clearInterval(timerRef.current);
         if (fadeRef.current) clearTimeout(fadeRef.current);
     }, []);
+    // User-initiated stops fade out first; cutting a tone mid-cycle clicks in the headphones.
+    const stopGently = (0, _react.useCallback)(()=>{
+        if (!eng.current.playing) return stopAudio();
+        eng.current.fadeOut(0.3);
+        if (timerRef.current) clearInterval(timerRef.current);
+        if (fadeRef.current) clearTimeout(fadeRef.current);
+        fadeRef.current = setTimeout(stopAudio, 400);
+    }, [
+        stopAudio
+    ]);
     // Lock-screen / notification media controls: show what's playing and let "stop" end it.
     (0, _react.useEffect)(()=>{
         if (!("mediaSession" in navigator)) return;
         const ms = navigator.mediaSession;
         try {
-            ms.setActionHandler("stop", stopAudio);
+            ms.setActionHandler("stop", stopGently);
         } catch  {}
         if (playing) {
             try {
@@ -16113,7 +16185,7 @@ function Terminal() {
             } catch  {}
             ms.playbackState = "playing";
         } else ms.playbackState = "none";
-    }, [playing, activeName, stopAudio]);
+    }, [playing, activeName, stopGently]);
     const startSession = (0, _react.useCallback)((preset)=>{
         stopAudio();
         setSessionOn(true);
@@ -16155,7 +16227,8 @@ function Terminal() {
                 ci = idx;
                 setPhaseIdx(idx);
                 const nx = preset.phases[idx];
-                eng.current.setFrequencies(nx.beat, nx.carrier);
+                // Glide between phases (up to 30s) rather than stepping the tone.
+                eng.current.setFrequencies(nx.beat, nx.carrier, Math.min(30, nx.minutes * 15));
                 setBeat(nx.beat);
                 setCarrier(nx.carrier);
             }
@@ -16497,12 +16570,12 @@ function Terminal() {
                             }) : /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
                                 label: "[\u25A0 STOP]",
                                 warn: true,
-                                onClick: stopAudio
+                                onClick: stopGently
                             }),
                             sessionOn && /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
                                 label: "[END SESSION]",
                                 warn: true,
-                                onClick: stopAudio
+                                onClick: stopGently
                             }),
                             !log.active ? /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
                                 label: "[● LOG]",
@@ -16716,10 +16789,10 @@ function Terminal() {
                                         }),
                                         /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
                                             className: "mt-2",
-                                            children: "CARRIER FREQUENCIES CALIBRATED TO OSTER CURVE (1973)"
+                                            children: "CARRIER TONES ARE LOW, SOFT PRESETS PER BAND."
                                         }),
                                         /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "FOR OPTIMAL BINAURAL BEAT PERCEPTION PER BAND."
+                                            children: "IN [CUSTOM], A HIGHER CARRIER (~400HZ) MAY MAKE THE BEAT EASIER TO HEAR."
                                         }),
                                         /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
                                             className: "mt-2",
@@ -16946,7 +17019,7 @@ function Terminal() {
                                         return /*#__PURE__*/ (0, _jsxRuntime.jsxs)("button", {
                                             onClick: ()=>{
                                                 playClick();
-                                                isActive ? stopAudio() : startSession(preset);
+                                                isActive ? stopGently() : startSession(preset);
                                             },
                                             className: `block w-full text-left mb-1 px-2 py-1.5 transition-all${isActive ? " active-pulse" : ""}`,
                                             style: {
@@ -17146,7 +17219,7 @@ function Terminal() {
                                                             marginTop: "4px"
                                                         },
                                                         children: [
-                                                            "OSTER CURVE OPTIMAL: ",
+                                                            "BAND PRESET CARRIER: ",
                                                             optimalCarrier(beat),
                                                             " HZ FOR ",
                                                             BANDS[getBand(beat)].label
