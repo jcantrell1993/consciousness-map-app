@@ -1690,6 +1690,142 @@ button {
   animation: .15s infinite alternate flicker;
 }
 
+/* ═══ BOOT / POWER-ON ═══ */
+.boot-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  /* No user scrolling: the script keeps the newest line in view, like a terminal */
+  overflow: hidden;
+  overflow-anchor: none;
+  transform-origin: 50% 50%;
+}
+
+/* The beam draws a line across the middle, then the line opens into the screen */
+.crt-beam {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  z-index: 6;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, #c6ffc9 18%, #f4fff5 50%, #c6ffc9 82%, transparent);
+  box-shadow: 0 0 12px 2px #33ff33, 0 0 40px 8px #33ff3355;
+  animation: crt-beam 1s ease-out both;
+}
+
+.crt-open {
+  animation: crt-open .55s cubic-bezier(.2, .7, .2, 1) .42s both;
+}
+
+.crt-off {
+  animation: crt-off .3s cubic-bezier(.6, 0, .9, .4) both;
+}
+
+/* The app arrives from the dark (opacity only: a filter here would trap fixed overlays) */
+.crt-wake {
+  animation: crt-wake .6s ease-out backwards;
+}
+
+@keyframes crt-beam {
+  0% { transform: scaleX(0); opacity: 1; }
+  38% { transform: scaleX(1); opacity: 1; }
+  62% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
+@keyframes crt-open {
+  0% { transform: scaleY(.006); filter: brightness(2.6); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: scaleY(1); filter: brightness(1); opacity: 1; }
+}
+
+@keyframes crt-off {
+  0% { transform: scaleY(1); filter: brightness(1); opacity: 1; }
+  70% { transform: scaleY(.006); filter: brightness(2.6); opacity: 1; }
+  100% { transform: scaleY(.006) scaleX(.02); filter: brightness(2.6); opacity: 0; }
+}
+
+@keyframes crt-wake {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Standby: a single LED breathing slowly in the dark */
+.boot-led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #33ff33;
+  box-shadow: 0 0 10px 2px #33ff3388;
+  animation: boot-breathe 4.2s ease-in-out infinite;
+}
+
+.boot-hint {
+  animation: boot-hint 3.6s ease-in-out infinite;
+}
+
+@keyframes boot-breathe {
+  0%, 100% { opacity: .18; }
+  50% { opacity: .9; }
+}
+
+@keyframes boot-hint {
+  0%, 100% { opacity: .35; }
+  50% { opacity: .85; }
+}
+
+.boot-caret {
+  display: inline-block;
+  width: .55em;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -.15em;
+  background: #33ff33;
+  box-shadow: 0 0 8px #33ff33;
+}
+
+/* The prompt's cursor is a tall slab, 1:4 */
+.boot-monolith {
+  display: inline-block;
+  width: .36em;
+  height: 1.44em;
+  margin-left: .6em;
+  vertical-align: -.3em;
+  background: #33ff33;
+  box-shadow: 0 0 8px #33ff33, 0 0 18px #33ff3388;
+  animation: boot-monolith 1.4s steps(1) infinite;
+}
+
+@keyframes boot-monolith {
+  0% { opacity: 1; }
+  62% { opacity: 0; }
+}
+
+.boot-skip {
+  position: fixed;
+  right: 18px;
+  bottom: 14px;
+  z-index: 7;
+  pointer-events: none;
+  font-size: 11px;
+  letter-spacing: .22em;
+  color: rgba(51, 255, 51, .35);
+}
+
+@media (max-width: 559px) {
+  .boot-hex { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt-beam, .crt-open, .crt-off, .crt-wake, .boot-led, .boot-hint, .boot-monolith {
+    animation: none !important;
+  }
+  .crt-beam { display: none; }
+}
+
 .glow {
   text-shadow: 0 0 5px, 0 0 10px;
 }
@@ -15515,226 +15651,630 @@ function playClick() {
     nSrc.connect(nLp).connect(nGain).connect(ctx.destination);
     nSrc.start(now);
 }
-// CRT boot sound — synthesized analog power-on (deep, warm)
-// Text starts at 1.8s delay, each line every 0.12s — ticks must match
-function playCrtBootSound() {
+/* ═══════════════════════════════════════════════════════════
+   BOOT — LANTERN-1, the threshold guidance system
+   A slow old-terminal power-on: the beam draws a line and opens it into a screen, the machine
+   tests itself, sounds five depth rings on a sonar scope, then speaks to you. Any tap or key
+   fast-forwards; the next one steps through.
+   ═══════════════════════════════════════════════════════════ */
+
+// Boot audio: every voice runs through one quiet bus so the whole sequence sits well under
+// your session volume, with a short damped echo on the pings for a sonar feel.
+function createBootAudio() {
     const ctx = getUiCtx();
-    const now = ctx.currentTime;
-    const TEXT_START = 1.8; // seconds — matches setTimeout in BootSequence
-    const LINE_INTERVAL = 0.12; // seconds — matches setInterval in BootSequence
-    const NUM_LINES = BOOT_LINES.length;
-    // 1. Deep transformer drone winding up — very low
-    const whine = ctx.createOscillator();
-    const whineGain = ctx.createGain();
-    const whineLp = ctx.createBiquadFilter();
-    whine.type = "sawtooth";
-    whine.frequency.setValueAtTime(20, now);
-    whine.frequency.exponentialRampToValueAtTime(80, now + 1.2);
-    whine.frequency.exponentialRampToValueAtTime(50, now + 1.8);
-    whineLp.type = "lowpass";
-    whineLp.frequency.value = 150;
-    whineLp.Q.value = 2;
-    whineGain.gain.setValueAtTime(0, now);
-    whineGain.gain.linearRampToValueAtTime(0.12, now + 0.5);
-    whineGain.gain.linearRampToValueAtTime(0.15, now + 1.0);
-    whineGain.gain.linearRampToValueAtTime(0, now + 1.8);
-    whine.connect(whineLp).connect(whineGain).connect(ctx.destination);
-    whine.start(now);
-    whine.stop(now + 2.0);
-    // 2. Degauss thunk — sub-bass impact
-    const thunk = ctx.createOscillator();
-    const thunkGain = ctx.createGain();
-    thunk.type = "sine";
-    thunk.frequency.setValueAtTime(35, now + 1.0);
-    thunk.frequency.exponentialRampToValueAtTime(15, now + 1.8);
-    thunkGain.gain.setValueAtTime(0, now);
-    thunkGain.gain.setValueAtTime(0.25, now + 1.0);
-    thunkGain.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
-    thunk.connect(thunkGain).connect(ctx.destination);
-    thunk.start(now + 1.0);
-    thunk.stop(now + 2.3);
-    // 3. Low rumble static — filtered way down
-    const bufLen = ctx.sampleRate * 0.6;
-    const noiseBuf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-    const noiseData = noiseBuf.getChannelData(0);
-    for(let i = 0; i < bufLen; i++)noiseData[i] = Math.random() * 2 - 1;
-    const noise = ctx.createBufferSource();
-    const noiseGain = ctx.createGain();
-    const noiseLp = ctx.createBiquadFilter();
-    noise.buffer = noiseBuf;
-    noiseLp.type = "lowpass";
-    noiseLp.frequency.value = 400;
-    noiseGain.gain.setValueAtTime(0, now);
-    noiseGain.gain.linearRampToValueAtTime(0.07, now + 0.05);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-    noise.connect(noiseLp).connect(noiseGain).connect(ctx.destination);
-    noise.start(now);
-    // 4. Mains hum settling — 50Hz fundamental
-    const hum = ctx.createOscillator();
-    const humGain = ctx.createGain();
-    hum.type = "sine";
-    hum.frequency.value = 50;
-    humGain.gain.setValueAtTime(0, now + 1.5);
-    humGain.gain.linearRampToValueAtTime(0.04, now + 2.2);
-    humGain.gain.setValueAtTime(0.04, now + 5.0);
-    humGain.gain.linearRampToValueAtTime(0, now + 6.0);
-    hum.connect(humGain).connect(ctx.destination);
-    hum.start(now + 1.5);
-    hum.stop(now + 6.0);
-    // 5. Second harmonic — 100Hz warmth
-    const hum2 = ctx.createOscillator();
-    const hum2Gain = ctx.createGain();
-    hum2.type = "sine";
-    hum2.frequency.value = 100;
-    hum2Gain.gain.setValueAtTime(0, now + 1.5);
-    hum2Gain.gain.linearRampToValueAtTime(0.02, now + 2.2);
-    hum2Gain.gain.setValueAtTime(0.02, now + 5.0);
-    hum2Gain.gain.linearRampToValueAtTime(0, now + 6.0);
-    hum2.connect(hum2Gain).connect(ctx.destination);
-    hum2.start(now + 1.5);
-    hum2.stop(now + 6.0);
-    // 6. Teletype ticks — synced exactly with boot text lines
-    //    Each tick fires at TEXT_START + i * LINE_INTERVAL, matching when each line appears
-    for(let i = 0; i < NUM_LINES; i++){
-        const t = now + TEXT_START + i * LINE_INTERVAL;
-        // Skip ticks for empty lines
-        if (BOOT_LINES[i] === "") continue;
-        const tick = ctx.createOscillator();
-        const tGain = ctx.createGain();
-        const tLp = ctx.createBiquadFilter();
-        tick.type = "square";
-        tick.frequency.value = 55 + Math.random() * 25; // very low: 55-80Hz
-        tLp.type = "lowpass";
-        tLp.frequency.value = 120;
-        tGain.gain.setValueAtTime(0.05, t);
-        tGain.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
-        tick.connect(tLp).connect(tGain).connect(ctx.destination);
-        tick.start(t);
-        tick.stop(t + 0.05);
+    const bus = ctx.createGain();
+    bus.gain.value = 0.9;
+    bus.connect(ctx.destination);
+    const echoIn = ctx.createGain();
+    const echo = ctx.createDelay(1);
+    const feedback = ctx.createGain();
+    const damp = ctx.createBiquadFilter();
+    echo.delayTime.value = 0.31;
+    feedback.gain.value = 0.36;
+    damp.type = "lowpass";
+    damp.frequency.value = 1600;
+    echoIn.connect(echo);
+    echo.connect(damp);
+    damp.connect(feedback);
+    feedback.connect(echo);
+    damp.connect(bus);
+    const hold = [];                                  // long voices, faded out by hush()
+    const noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const nd = noise.getChannelData(0);
+    for(let i = 0; i < nd.length; i++)nd[i] = Math.random() * 2 - 1;
+    // A pitched voice: quick attack, exponential tail. `send` feeds the echo.
+    const tone = (type, freq, t, peak, attack, decay, send)=>{
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(peak, t + attack);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+        o.connect(g);
+        g.connect(bus);
+        if (send) {
+            const s = ctx.createGain();
+            s.gain.value = send;
+            g.connect(s);
+            s.connect(echoIn);
+        }
+        o.start(t);
+        o.stop(t + attack + decay + 0.05);
+    };
+    // A short filtered noise burst: relay contacts, the beam's hiss
+    const burst = (t, dur, freq, q, peak)=>{
+        const s = ctx.createBufferSource();
+        const f = ctx.createBiquadFilter();
+        const g = ctx.createGain();
+        s.buffer = noise;
+        f.type = "bandpass";
+        f.frequency.value = freq;
+        f.Q.value = q;
+        g.gain.setValueAtTime(peak, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        s.connect(f);
+        f.connect(g);
+        g.connect(bus);
+        s.start(t);
+        s.stop(t + dur + 0.02);
+    };
+    return {
+        powerOn () {
+            const t = ctx.currentTime + 0.02;
+            // relay clunk
+            const k = ctx.createOscillator();
+            const kg = ctx.createGain();
+            k.frequency.setValueAtTime(95, t);
+            k.frequency.exponentialRampToValueAtTime(42, t + 0.09);
+            kg.gain.setValueAtTime(0.14, t);
+            kg.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+            k.connect(kg);
+            kg.connect(bus);
+            k.start(t);
+            k.stop(t + 0.16);
+            burst(t, 0.02, 700, 0.8, 0.08);
+            // mains hum swells up under everything (60 Hz and its harmonics)
+            for (const [f, peak] of [[60, 0.03], [120, 0.016], [180, 0.007]]){
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.frequency.value = f;
+                g.gain.setValueAtTime(0.0001, t + 0.1);
+                g.gain.linearRampToValueAtTime(peak, t + 1.6);
+                o.connect(g);
+                g.connect(bus);
+                o.start(t + 0.1);
+                hold.push({ o, g });
+            }
+            // degauss: a low wobble that rings down as the beam opens
+            const dg = ctx.createOscillator();
+            const dgg = ctx.createGain();
+            const lfo = ctx.createOscillator();
+            const lfoG = ctx.createGain();
+            dg.frequency.value = 48;
+            lfo.frequency.value = 6.5;
+            lfoG.gain.setValueAtTime(16, t + 0.3);
+            lfoG.gain.exponentialRampToValueAtTime(0.5, t + 1.5);
+            lfo.connect(lfoG);
+            lfoG.connect(dg.frequency);
+            dgg.gain.setValueAtTime(0.0001, t + 0.3);
+            dgg.gain.linearRampToValueAtTime(0.16, t + 0.34);
+            dgg.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
+            dg.connect(dgg);
+            dgg.connect(bus);
+            dg.start(t + 0.3);
+            lfo.start(t + 0.3);
+            dg.stop(t + 1.7);
+            lfo.stop(t + 1.7);
+            burst(t + 0.35, 0.9, 2600, 0.6, 0.012);       // raster hiss
+        },
+        tick () {
+            const t = ctx.currentTime;
+            burst(t, 0.012, 1100 + Math.random() * 500, 1.2, 0.03);
+            tone("sine", 120 + Math.random() * 40, t, 0.02, 0.002, 0.03, 0);
+        },
+        ok () {
+            tone("sine", 660, ctx.currentTime, 0.03, 0.004, 0.09, 0.25);
+        },
+        // Five depth rings, descending: A4 F#4 E4 C#4 A3
+        ping (i) {
+            const t = ctx.currentTime;
+            const f = [440, 370, 329.6, 277.2, 220][i % 5];
+            tone("sine", f, t, 0.07, 0.006, 1.7, 0.7);
+            tone("sine", f * 2, t, 0.018, 0.006, 0.9, 0.5);
+            tone("sine", f / 2, t, 0.03 * (i / 4), 0.02, 1.4, 0.3);
+        },
+        // The low chord under the spoken lines
+        swell () {
+            const t = ctx.currentTime;
+            for (const f of [110, 164.8, 138.6]){
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                const lp = ctx.createBiquadFilter();
+                o.type = "triangle";
+                o.frequency.value = f;
+                lp.type = "lowpass";
+                lp.frequency.value = 520;
+                g.gain.setValueAtTime(0.0001, t);
+                g.gain.linearRampToValueAtTime(0.022, t + 3);
+                o.connect(lp);
+                lp.connect(g);
+                g.connect(bus);
+                o.start(t);
+                hold.push({ o, g });
+            }
+        },
+        // Two soft notes: the lantern is lit
+        ready () {
+            const t = ctx.currentTime;
+            tone("sine", 220, t, 0.06, 0.01, 2.2, 0.8);
+            tone("sine", 329.6, t + 0.38, 0.04, 0.01, 2.4, 0.8);
+        },
+        hush (seconds = 1.2) {
+            const t = ctx.currentTime;
+            for (const { o, g } of hold.splice(0))try {
+                g.gain.cancelScheduledValues(t);
+                g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + seconds);
+                o.stop(t + seconds + 0.05);
+            } catch  {}
+        }
+    };
+}
+function bootGreeting(d) {
+    const h = d.getHours();
+    if (h >= 5 && h < 12) return "GOOD MORNING, TRAVELER.";
+    if (h >= 12 && h < 17) return "GOOD AFTERNOON, TRAVELER.";
+    if (h >= 17 && h < 22) return "GOOD EVENING, TRAVELER.";
+    return "IT IS LATE, TRAVELER.";
+}
+// What the machine remembers: read back from the session log kept on this device
+function bootMemoryRows() {
+    const logs = logReadJson(LOG_KEY, []);
+    const done = Array.isArray(logs) ? logs.filter((l)=>l && l.endedAt && l.endedAt - l.startedAt >= 120000) : [];
+    if (!done.length) return [
+        [
+            "LAST DESCENT",
+            "NONE ON RECORD"
+        ]
+    ];
+    const last = done.reduce((a, b)=>a.startedAt > b.startedAt ? a : b);
+    const days = Math.floor((Date.now() - last.startedAt) / 86400000);
+    const when = days <= 0 ? "TODAY" : days === 1 ? "YESTERDAY" : `${days} DAYS AGO`;
+    const depth = logDepthLabel(last.note && last.note.depth);
+    const week = done.filter((l)=>Date.now() - l.startedAt < 7 * 86400000).length;
+    return [
+        [
+            "LAST DESCENT",
+            depth ? `${when} · ${depth}` : when
+        ],
+        [
+            "THIS WEEK",
+            `${week} ${week === 1 ? "DESCENT" : "DESCENTS"}`
+        ]
+    ];
+}
+// A sonar scope: five dotted rings (the depth levels) light one at a time while a beam sweeps,
+// then the centre settles into a slow breath.
+function DepthScope({ lit, awake }) {
+    const ref = _react.useRef(null);
+    const live = _react.useRef({ lit: 0, awake: false });
+    live.current.lit = lit;
+    live.current.awake = awake;
+    _react.useEffect(()=>{
+        const canvas = ref.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        const S = canvas.width, c = S / 2, R = S / 2 - 10;
+        const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        const litAt = [];
+        let seen = 0, sweep = -Math.PI / 2, last = performance.now(), raf;
+        const arc = (r, a0, a1, style, w)=>{
+            ctx.beginPath();
+            ctx.arc(c, c, r, a0, a1);
+            ctx.strokeStyle = style;
+            ctx.lineWidth = w;
+            ctx.stroke();
+        };
+        const draw = (now)=>{
+            raf = requestAnimationFrame(draw);
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            const s = live.current;
+            while(seen < s.lit)litAt[seen++] = now;
+            if (!reduce) sweep += dt * (s.awake ? 0.8 : 2.4);
+            ctx.clearRect(0, 0, S, S);
+            // range ticks every 10 degrees, longer at the quarters
+            ctx.setLineDash([]);
+            ctx.strokeStyle = "rgba(51,255,51,0.28)";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            for(let d = 0; d < 36; d++){
+                const a = d * Math.PI / 18;
+                const len = d % 9 === 0 ? 13 : 6;
+                ctx.moveTo(c + Math.cos(a) * R, c + Math.sin(a) * R);
+                ctx.lineTo(c + Math.cos(a) * (R - len), c + Math.sin(a) * (R - len));
+            }
+            ctx.stroke();
+            // cross-hairs
+            ctx.strokeStyle = "rgba(51,255,51,0.12)";
+            ctx.beginPath();
+            ctx.moveTo(c - R, c);
+            ctx.lineTo(c + R, c);
+            ctx.moveTo(c, c - R);
+            ctx.lineTo(c, c + R);
+            ctx.stroke();
+            // the sweep: a wedge that fades out behind the beam
+            if (!reduce && ctx.createConicGradient) {
+                const g = ctx.createConicGradient(sweep - 1.0, c, c);
+                const end = 1.0 / (2 * Math.PI);
+                g.addColorStop(0, "rgba(51,255,51,0)");
+                g.addColorStop(end, "rgba(120,255,130,0.30)");
+                g.addColorStop(Math.min(1, end + 0.0005), "rgba(51,255,51,0)");
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(c, c);
+                ctx.arc(c, c, R - 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // the five rings: dotted, ignited one at a time, flaring as the beam crosses them
+            ctx.setLineDash([2, 5]);
+            for(let k = 0; k < 5; k++){
+                const r = R * (1 - k * 0.19) - 6;
+                if (k >= s.lit) {
+                    arc(r, 0, Math.PI * 2, "rgba(51,255,51,0.10)", 1.5);   // waiting
+                    continue;
+                }
+                const flare = Math.max(0, 1 - (now - litAt[k]) / 1100);
+                arc(r, 0, Math.PI * 2, PHOSPHOR_LUT[(255 * (0.5 + 0.5 * flare)) | 0], 2);
+                if (!reduce) arc(r, sweep - 0.55, sweep, PHOSPHOR_LUT[255], 2.5);   // beam highlight
+            }
+            // centre
+            ctx.setLineDash([]);
+            const rad = (s.awake ? 9 : 3.5) * (s.awake ? 1 + 0.18 * Math.sin(now / 1000 * 1.3) : 1);
+            const gr = ctx.createRadialGradient(c, c, 0, c, c, rad * 2.2);
+            gr.addColorStop(0, "rgba(225,255,228,0.95)");
+            gr.addColorStop(0.35, "rgba(51,255,51,0.55)");
+            gr.addColorStop(1, "rgba(51,255,51,0)");
+            ctx.fillStyle = gr;
+            ctx.beginPath();
+            ctx.arc(c, c, rad * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+        };
+        raf = requestAnimationFrame(draw);
+        return ()=>cancelAnimationFrame(raf);
+    }, []);
+    return lh("canvas", {
+        ref,
+        width: 360,
+        height: 360,
+        style: {
+            width: "clamp(116px, 32vw, 200px)",
+            height: "auto",
+            aspectRatio: "1",
+            flex: "0 0 auto",
+            filter: "drop-shadow(0 0 5px rgba(51,255,51,0.5))"
+        }
+    });
+}
+// Freshly written text burns bright and cools to its resting glow, like a real phosphor
+const bootInk = (fresh)=>({
+        color: fresh ? "#cbffce" : "rgba(51,255,51,0.74)",
+        textShadow: fresh ? "0 0 6px #33ff33, 0 0 16px rgba(51,255,51,0.7)" : "0 0 4px rgba(51,255,51,0.35)",
+        transition: fresh ? "none" : "color .9s ease-out, text-shadow .9s ease-out"
+    });
+// A label, a dotted leader and a status, like a self-test printout
+function BootRow({ label, leader, value, status, fresh, flash, hex, wrap }) {
+    const caret = fresh ? lh("span", { className: "boot-caret" }) : null;
+    return lh("div", {
+        style: { display: "flex", alignItems: "baseline", gap: "8px", minHeight: "1.55em", ...bootInk(fresh) }
+    }, lh("span", { style: { whiteSpace: wrap ? "normal" : "nowrap" } }, label, caret), lh("span", {
+        style: {
+            flex: 1,
+            minWidth: "10px",
+            borderBottom: leader ? "1px dotted rgba(51,255,51,0.4)" : "1px dotted transparent",
+            transform: "translateY(-0.32em)"
+        }
+    }), hex ? lh("span", { className: "boot-hex", style: { opacity: 0.5, fontSize: "0.85em" } }, hex) : null, lh("span", { style: { whiteSpace: "nowrap" } }, value ? lh("span", { style: { opacity: 0.7 } }, value, status ? " " : "") : null, status ? lh("span", {
+        style: flash ? { color: "#e6ffe8", textShadow: "0 0 8px #33ff33, 0 0 20px rgba(51,255,51,0.8)" } : {
+            color: "#33ff33",
+            textShadow: "0 0 5px rgba(51,255,51,0.6)",
+            transition: "color .7s ease-out, text-shadow .7s ease-out"
+        }
+    }, status) : null));
+}
+function renderBootItem(it) {
+    const caret = it.fresh ? lh("span", { className: "boot-caret" }) : null;
+    const ink = bootInk(it.fresh);
+    switch(it.kind){
+        case "head":
+            return lh("div", {
+                key: it.id,
+                style: {
+                    fontSize: "clamp(28px, 9vw, 44px)",
+                    letterSpacing: "0.28em",
+                    lineHeight: 1.15,
+                    minHeight: "1.15em",
+                    color: it.fresh ? "#e2ffe4" : "#33ff33",
+                    textShadow: it.fresh ? "0 0 8px #33ff33, 0 0 26px rgba(51,255,51,0.8)" : "0 0 7px rgba(51,255,51,0.75), 0 0 20px rgba(51,255,51,0.35)",
+                    transition: it.fresh ? "none" : "color .9s ease-out, text-shadow .9s ease-out"
+                }
+            }, it.text, caret);
+        case "sub":
+            return lh("div", { key: it.id, style: { letterSpacing: "0.18em", minHeight: "1.55em", ...ink } }, it.text, caret);
+        case "dim":
+            return lh("div", { key: it.id, style: { fontSize: "0.8em", letterSpacing: "0.06em", opacity: 0.6, minHeight: "1.55em", ...ink } }, it.text, caret);
+        case "rule":
+            return lh("div", { key: it.id, style: { height: "5px", margin: "8px 0 10px", borderTop: "1px solid rgba(51,255,51,0.35)", borderBottom: "1px solid rgba(51,255,51,0.35)" } });
+        case "gap":
+            return lh("div", { key: it.id, style: { height: "12px" } });
+        case "stat":
+            return lh(BootRow, { key: it.id, label: it.label, leader: it.leader, value: it.value, status: it.status, fresh: it.fresh, flash: it.flash, hex: it.hex });
+        case "voice":
+            return lh("div", {
+                key: it.id,
+                style: {
+                    fontSize: "clamp(15px, 4.6vw, 21px)",
+                    letterSpacing: "0.07em",
+                    lineHeight: 1.5,
+                    margin: "2px 0",
+                    minHeight: "1.5em",
+                    color: it.fresh ? "#f0fff1" : "#c4ffc8",
+                    textShadow: it.fresh ? "0 0 8px #33ff33, 0 0 22px rgba(51,255,51,0.75)" : "0 0 6px rgba(51,255,51,0.55)",
+                    transition: it.fresh ? "none" : "color 1.2s ease-out, text-shadow 1.2s ease-out"
+                }
+            }, lh("span", { style: { opacity: 0.5 } }, "> "), it.text, caret);
+        case "warn":
+            return lh("div", { key: it.id, style: { fontSize: "0.85em", minHeight: "1.55em", color: "#ffaa00", textShadow: "0 0 5px rgba(255,170,0,0.5)", opacity: it.fresh ? 1 : 0.8 } }, it.text, caret);
+        case "prompt":
+            return lh("div", { key: it.id, style: { marginTop: "4px", letterSpacing: "0.14em", color: "#33ff33", textShadow: "0 0 7px rgba(51,255,51,0.7)", minHeight: "1.55em" } }, it.text, it.text && !it.fresh ? lh("span", { className: "boot-monolith" }) : caret);
+        case "scope":
+            return lh("div", { key: it.id, style: { display: "flex", flexWrap: "wrap", gap: "6px 18px", alignItems: "center", margin: "6px 0 10px" } }, lh(DepthScope, { lit: it.lit, awake: it.awake }), lh("div", { style: { flex: "1 1 190px", minWidth: 0, fontSize: "0.9em" } }, it.rows.map((r, i)=>lh(BootRow, { key: i, label: r.text, leader: !r.fresh, status: r.status, fresh: r.fresh, wrap: true }))));
+        default:
+            return null;
     }
 }
-// Boot sequence text
-const BOOT_LINES = [
-    "WEYLAND-YUTANI CORP \u2014 NEURAL INTERFACE SYSTEM v4.7.2",
-    "COPYRIGHT (C) 2026 CONSCIOUSNESS MAP PROJECT",
-    "",
-    "INITIALIZING AUDIO SUBSYSTEM.............. OK",
-    "LOADING FREQUENCY TABLES.................. OK",
-    "CALIBRATING BINAURAL ENGINE............... OK",
-    "ISOCHRONIC PULSE GENERATOR................ OK",
-    "MONROE FOCUS LEVEL DATABASE............... LOADED",
-    "BRAINWAVE BAND DEFINITIONS................ LOADED",
-    "",
-    "5 SESSION PROTOCOLS AVAILABLE",
-    "5 FOCUS LEVELS MAPPED",
-    "FREQUENCY RANGE: 0.5 - 44.0 HZ",
-    "",
-    "WARNING: STEREO HEADPHONES REQUIRED FOR BINAURAL MODE",
-    "WARNING: CLOSE EYES DURING SESSION FOR OPTIMAL ENTRAINMENT",
-    "",
-    "SYSTEM READY.",
-    "",
-    "> PRESS ANY KEY TO CONTINUE_"
-];
+const BOOT_CANCEL = Symbol("boot-cancel");
 function BootSequence({ onComplete }) {
-    const [started, setStarted] = (0, _react.useState)(false);
-    const [lineCount, setLineCount] = (0, _react.useState)(0);
-    const doneRef = (0, _react.useRef)(false);
-    // Wait for user click/key to start (browsers require gesture for audio)
-    (0, _react.useEffect)(()=>{
+    const [started, setStarted] = _react.useState(false);
+    const [phase, setPhase] = _react.useState("run");      // run | done | exit
+    const [, force] = _react.useState(0);
+    const itemsRef = _react.useRef([]);
+    const stageRef = _react.useRef(null);
+    // Like a terminal: whenever more text arrives than fits, keep the newest line in view
+    _react.useLayoutEffect(()=>{
+        const st = stageRef.current;
+        if (st) st.scrollTop = st.scrollHeight;
+    });
+    // Standby: wait for a tap or key (browsers need a gesture before any sound)
+    _react.useEffect(()=>{
         if (started) return;
-        const handler = ()=>setStarted(true);
-        window.addEventListener("keydown", handler);
-        window.addEventListener("click", handler);
+        const go = ()=>setStarted(true);
+        window.addEventListener("keydown", go);
+        window.addEventListener("click", go);
         return ()=>{
-            window.removeEventListener("keydown", handler);
-            window.removeEventListener("click", handler);
+            window.removeEventListener("keydown", go);
+            window.removeEventListener("click", go);
         };
     }, [
         started
     ]);
-    // Once started, play boot sound and begin text sequence
-    (0, _react.useEffect)(()=>{
+    _react.useEffect(()=>{
         if (!started) return;
-        playCrtBootSound();
-        // Delay text output to sync with the sound — text starts after the whine settles
-        const startDelay = setTimeout(()=>{
-            let i = 0;
-            const id = setInterval(()=>{
-                i++;
-                if (i <= BOOT_LINES.length) setLineCount(i);
-                else clearInterval(id);
-            }, 120);
-        }, 1800);
-        return ()=>clearTimeout(startDelay);
-    }, [
-        started
-    ]);
-    // Allow dismiss once boot text is fully displayed
-    (0, _react.useEffect)(()=>{
-        if (lineCount < BOOT_LINES.length) return;
-        const handler = ()=>{
-            if (!doneRef.current) {
-                doneRef.current = true;
-                playClick();
-                onComplete();
+        let cancelled = false, skipped = false, armed = false, finished = false, exiting = false, doneAt = 0, nextId = 0;
+        const waiters = new Set();
+        const timers = [];
+        const rerender = ()=>force((n)=>n + 1);
+        let audio = null;
+        try {
+            audio = createBootAudio();
+        } catch  {}
+        // Sound is skipped once fast-forwarding
+        const snd = (fn)=>{
+            if (audio && !skipped && !cancelled) try {
+                fn(audio);
+            } catch  {}
+        };
+        // Wait, but wake early when fast-forwarding; abort when unmounted
+        const wait = (ms)=>new Promise((res, rej)=>{
+                if (cancelled) return rej(BOOT_CANCEL);
+                if (skipped || ms <= 0) return res();
+                const wake = ()=>{
+                    clearTimeout(id);
+                    waiters.delete(wake);
+                    if (cancelled) rej(BOOT_CANCEL);
+                    else res();
+                };
+                const id = setTimeout(wake, ms);
+                waiters.add(wake);
+            });
+        const add = (spec)=>{
+            const it = { id: ++nextId, text: "", fresh: false, ...spec };
+            itemsRef.current.push(it);
+            rerender();
+            return it;
+        };
+        // Write text into one field of an item a character at a time
+        const type = async (it, full, speed, field = "text")=>{
+            it.fresh = true;
+            for(let i = 0; i < full.length; i++){
+                it[field] = full.slice(0, i + 1);
+                rerender();
+                await wait(speed * (0.6 + Math.random() * 0.8) * (",.".includes(full[i]) ? 5 : 1));
+            }
+            it.fresh = false;
+            rerender();
+        };
+        const line = async (spec)=>{
+            const it = add({ ...spec, text: "" });
+            snd((a)=>a.tick());
+            await type(it, spec.text, spec.speed || 14);
+            await wait(spec.after === undefined ? 90 : spec.after);
+        };
+        const hexNoise = ()=>Array.from({ length: 3 }, ()=>Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, "0")).join(" ");
+        const countUp = async (it, target, unit)=>{
+            const steps = 20;
+            for(let i = 1; i <= steps; i++){
+                it.value = `${String(Math.round(target * (1 - Math.pow(1 - i / steps, 2)))).padStart(4, "0")}${unit}`;
+                it.hex = i < steps ? hexNoise() : "";
+                rerender();
+                await wait(28);
             }
         };
-        window.addEventListener("keydown", handler);
-        window.addEventListener("click", handler);
+        const stat = async (label, spec = {})=>{
+            const it = add({ kind: "stat", label: "", leader: false, value: "", status: "", hex: "", flash: false });
+            snd((a)=>a.tick());
+            await type(it, label, 8, "label");
+            it.leader = true;
+            rerender();
+            if (spec.count) await countUp(it, spec.count, spec.unit || "");
+            if (spec.status) {
+                await wait(60);
+                it.status = spec.status;
+                it.flash = true;
+                snd((a)=>a.ok());
+                rerender();
+                timers.push(setTimeout(()=>{
+                    it.flash = false;
+                    rerender();
+                }, 600));
+            }
+            await wait(spec.after === undefined ? 60 : spec.after);
+        };
+        const voice = async (text, speed)=>{
+            const it = add({ kind: "voice", text: "" });
+            await type(it, text, speed);
+        };
+
+        const run = async ()=>{
+            snd((a)=>a.powerOn());
+            await wait(1000);                                   // the beam draws its line and opens
+            await line({ kind: "head", text: "LANTERN-1", speed: 60, after: 120 });
+            await line({ kind: "sub", text: "THRESHOLD GUIDANCE SYSTEM", speed: 12, after: 60 });
+            await line({ kind: "dim", text: "INNER SURVEY DIVISION · REV 4.7.2", speed: 5, after: 40 });
+            add({ kind: "rule" });
+            await wait(180);
+            // self-test
+            const lo = Math.min(...Object.values(BANDS).map((b)=>b.range[0]));
+            const hi = Math.max(...Object.values(BANDS).map((b)=>b.range[1]));
+            await stat("CORE MEMORY", { count: 4096, unit: "K", status: "OK" });
+            await stat("TONE SYNTHESIS", { status: "NOMINAL" });
+            await stat("BINAURAL ENGINE", { status: "NOMINAL" });
+            await stat("ISOCHRONIC GENERATOR", { status: "NOMINAL" });
+            await stat("SESSION PROTOCOLS", { status: `${PRESETS.length} LOADED` });
+            await stat("FREQUENCY RANGE", { status: `${lo.toFixed(1)} - ${hi.toFixed(1)} HZ` });
+            add({ kind: "gap" });
+            await wait(200);
+            // depth sounding: each ring lights with its level
+            await line({ kind: "sub", text: "SOUNDING DEPTH LEVELS", speed: 14, after: 80 });
+            const scope = add({ kind: "scope", lit: 0, awake: false, rows: [] });
+            // On a narrow screen the full names wrap, so use the short forms
+            const narrow = window.innerWidth < 560;
+            const SHORT = { f10: "MIND AWAKE", f12: "EXPANDED", f15: "NO TIME", f21: "THE BRIDGE", f27: "THE PARK" };
+            for(let i = 0; i < FOCUS.length; i++){
+                const fl = FOCUS[i];
+                const row = { text: "", status: "", fresh: true };
+                scope.rows.push(row);
+                scope.lit = i + 1;
+                snd((a)=>a.ping(i));
+                rerender();
+                await type(row, `${fl.name.replace("FOCUS ", "F")}  ${narrow ? SHORT[fl.id] || fl.sub : fl.sub}`, 6);
+                row.status = "MAPPED";
+                rerender();
+                await wait(300);
+            }
+            scope.awake = true;
+            rerender();
+            await wait(350);
+            // what the machine remembers of you
+            for (const [label, value] of bootMemoryRows())await stat(label, { status: value, after: 120 });
+            add({ kind: "gap" });
+            await wait(250);
+            // it speaks
+            snd((a)=>a.swell());
+            await wait(500);
+            await voice(bootGreeting(new Date()), 30);
+            await wait(450);
+            await voice("THE THRESHOLD IS OPEN.", 30);
+            await wait(450);
+            await voice("I WILL STAY WITH YOU AS LONG AS I CAN.", 26);
+            await wait(550);
+            add({ kind: "gap" });
+            await line({ kind: "warn", text: "WARNING: STEREO HEADPHONES REQUIRED FOR BINAURAL MODE", speed: 6, after: 40 });
+            await line({ kind: "warn", text: "WARNING: CLOSE EYES DURING SESSION FOR OPTIMAL ENTRAINMENT", speed: 6, after: 40 });
+            await line({ kind: "warn", text: "ADVISORY: SET DO NOT DISTURB BEFORE YOU LIE DOWN", speed: 6, after: 150 });
+            add({ kind: "gap" });
+            const touch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+            await line({ kind: "prompt", text: touch ? "TOUCH THE SCREEN TO DESCEND" : "PRESS ANY KEY TO DESCEND", speed: 22, after: 0 });
+        };
+        run().then(()=>{
+            if (cancelled) return;
+            finished = true;
+            doneAt = performance.now();
+            setPhase("done");
+            if (audio) try {
+                audio.ready();
+                // then let the hum and the chord settle to silence rather than droning at the prompt
+                timers.push(setTimeout(()=>audio.hush(4), 2500));
+            } catch  {}
+        }).catch((e)=>{
+            if (e !== BOOT_CANCEL) throw e;
+        });
+
+        // First tap/key fast-forwards; once everything is on screen the next one steps through
+        const fastForward = ()=>{
+            skipped = true;
+            [...waiters].forEach((w)=>w());
+        };
+        const onInput = (e)=>{
+            if (e.type === "keydown" && (e.repeat || [
+                "Shift",
+                "Control",
+                "Alt",
+                "Meta"
+            ].includes(e.key))) return;
+            if (!armed || exiting) return;
+            if (!finished) fastForward();
+            else if (performance.now() - doneAt > 350) {
+                exiting = true;
+                setPhase("exit");
+                if (audio) try {
+                    audio.hush(0.6);
+                } catch  {}
+                playClick();
+                timers.push(setTimeout(onComplete, 320));
+            }
+        };
+        window.addEventListener("keydown", onInput);
+        window.addEventListener("click", onInput);
+        timers.push(setTimeout(()=>{
+            armed = true;
+        }, 900));
+        // Reduced motion: no theatre, straight to the finished screen
+        if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) timers.push(setTimeout(fastForward, 700));
         return ()=>{
-            window.removeEventListener("keydown", handler);
-            window.removeEventListener("click", handler);
+            cancelled = true;
+            [...waiters].forEach((w)=>w());
+            timers.forEach(clearTimeout);
+            window.removeEventListener("keydown", onInput);
+            window.removeEventListener("click", onInput);
+            if (audio) try {
+                audio.hush(0.4);
+            } catch  {}
         };
     }, [
-        lineCount,
-        onComplete
+        started
     ]);
-    return /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-        className: "min-h-screen p-8 crt-screen screen-flicker",
-        style: {
-            background: "#0a0a0a"
-        },
-        children: [
-            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                className: "scanlines"
-            }),
-            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                className: "screen-static"
-            }),
-            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                className: "max-w-3xl mx-auto",
-                children: [
-                    !started && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "glow",
-                        style: {
-                            color: "#33ff33",
-                            fontSize: "16px",
-                            lineHeight: "1.6"
-                        },
-                        children: [
-                            "\u00A0",
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("br", {}),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                className: "blink-cursor",
-                                children: "CLICK OR PRESS ANY KEY TO POWER ON"
-                            })
-                        ]
-                    }),
-                    started && BOOT_LINES.slice(0, lineCount).map((line, i)=>/*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                            className: "glow-subtle",
-                            style: {
-                                color: line.startsWith("WARNING") ? "#ffaa00" : line.startsWith(">") ? "#33ff33" : "#33ff3399",
-                                fontSize: "16px",
-                                lineHeight: "1.6",
-                                minHeight: "1.6em"
-                            },
-                            children: line || "\u00A0"
-                        }, i))
-                ]
-            })
-        ]
-    });
+
+    if (!started) return lh("div", { className: "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, lh("div", { className: "scanlines" }), lh("div", { className: "screen-static" }), lh("div", {
+        style: { position: "fixed", inset: 0, zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "26px" }
+    }, lh("div", { className: "boot-led" }), lh("div", { style: { color: "rgba(51,255,51,0.45)", letterSpacing: "0.4em", fontSize: "12px" } }, "STANDBY"), lh("div", {
+        className: "boot-hint",
+        style: { color: "#33ff33", letterSpacing: "0.14em", fontSize: "14px", textAlign: "center", padding: "0 24px", textShadow: "0 0 6px rgba(51,255,51,0.5)" }
+    }, "PRESS ANY KEY OR TOUCH THE SCREEN TO POWER ON")));
+    return lh("div", { className: "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, lh("div", { className: "scanlines" }), lh("div", { className: "screen-static" }), lh("div", { className: "crt-beam" }), lh("div", { ref: stageRef, className: phase === "exit" ? "boot-stage crt-open crt-off" : "boot-stage crt-open" }, lh("div", {
+        style: { maxWidth: "760px", margin: "0 auto", padding: "clamp(14px, 3.5vh, 40px) 20px 56px", fontSize: "clamp(12.5px, 3.5vw, 16px)", lineHeight: 1.55 }
+    }, itemsRef.current.map(renderBootItem))), phase === "run" ? lh("div", { className: "boot-skip" }, "TAP OR PRESS ANY KEY TO SKIP") : null);
 }
 // Phase progress bar using block chars
 function PhaseBar({ preset, phaseIdx, elapsed }) {
@@ -17312,7 +17852,10 @@ function Terminal() {
 }
 function App() {
     const [booted, setBooted] = (0, _react.useState)(false);
-    return booted ? /*#__PURE__*/ (0, _jsxRuntime.jsx)(Terminal, {}) : /*#__PURE__*/ (0, _jsxRuntime.jsx)(BootSequence, {
+    return booted ? /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
+        className: "crt-wake",
+        children: /*#__PURE__*/ (0, _jsxRuntime.jsx)(Terminal, {})
+    }) : /*#__PURE__*/ (0, _jsxRuntime.jsx)(BootSequence, {
         onComplete: ()=>setBooted(true)
     });
 }
