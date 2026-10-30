@@ -1815,6 +1815,231 @@ button {
   color: rgba(51, 255, 51, .35);
 }
 
+/* ═══ LANTERN-1 CONSOLE (the main screen) ═══ */
+.plate-title {
+  font-size: clamp(24px, 7vw, 34px);
+  letter-spacing: .26em;
+  line-height: 1.15;
+  color: #33ff33;
+  text-shadow: 0 0 7px rgba(51, 255, 51, .75), 0 0 20px rgba(51, 255, 51, .35);
+}
+
+.plate-sub {
+  font-size: .86em;
+  letter-spacing: .18em;
+  color: rgba(51, 255, 51, .8);
+  text-shadow: 0 0 4px rgba(51, 255, 51, .35);
+}
+
+.plate-dim {
+  font-size: .72em;
+  letter-spacing: .08em;
+  color: rgba(51, 255, 51, .5);
+}
+
+.sect-title {
+  font-size: .86em;
+  letter-spacing: .22em;
+  color: rgba(51, 255, 51, .85);
+  text-shadow: 0 0 5px rgba(51, 255, 51, .4);
+}
+
+.sect-rule {
+  height: 5px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(51, 255, 51, .3);
+  border-bottom: 1px solid rgba(51, 255, 51, .3);
+}
+
+.tiny-label {
+  font-size: 11px;
+  letter-spacing: .3em;
+  color: rgba(51, 255, 51, .4);
+  margin-bottom: 3px;
+}
+
+.ctl-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+  margin: 4px 0 14px;
+}
+
+.ctl-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ctl-label {
+  font-size: 11px;
+  letter-spacing: .24em;
+  color: rgba(51, 255, 51, .45);
+  margin-right: 8px;
+}
+
+.ctl-val {
+  font-size: 12px;
+  color: rgba(51, 255, 51, .6);
+}
+
+.guide {
+  margin: 3px 0;
+  color: rgba(51, 255, 51, .55);
+  letter-spacing: .03em;
+}
+
+.guide .gk {
+  color: rgba(51, 255, 51, .9);
+  letter-spacing: .12em;
+  text-shadow: 0 0 4px rgba(51, 255, 51, .4);
+}
+
+/* Warnings and advisories are amber, as at boot */
+.advisory {
+  font-size: .85em;
+  letter-spacing: .04em;
+  color: #ffaa00;
+  opacity: .85;
+  text-shadow: 0 0 5px rgba(255, 170, 0, .5);
+  margin: 2px 0;
+}
+
+button.advisory {
+  display: block;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Commands: no filled blocks. A faint edge for the hit area, a glow when pressed, and a
+   slab (the boot's cursor) marking the one that is on */
+.cmd {
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: .08em;
+  color: rgba(51, 255, 51, .72);
+  background: transparent;
+  border: 1px solid rgba(51, 255, 51, .2);
+  padding: 2px 9px;
+  margin: 0 8px 6px 0;
+  cursor: pointer;
+  text-shadow: 0 0 5px rgba(51, 255, 51, .35);
+  transition: color .25s, text-shadow .25s, border-color .25s, background .25s;
+}
+
+.cmd:hover {
+  color: #b8ffbc;
+  border-color: rgba(51, 255, 51, .45);
+}
+
+.cmd:active {
+  color: #f0fff1;
+  background: rgba(51, 255, 51, .1);
+  text-shadow: 0 0 8px #33ff33, 0 0 20px rgba(51, 255, 51, .8);
+  transition: none;
+}
+
+.cmd.on {
+  color: #d6ffd9;
+  border-color: rgba(51, 255, 51, .55);
+  background: rgba(51, 255, 51, .07);
+  text-shadow: 0 0 7px rgba(51, 255, 51, .8), 0 0 18px rgba(51, 255, 51, .35);
+}
+
+.cmd.on::before {
+  content: "";
+  display: inline-block;
+  width: .3em;
+  height: 1.1em;
+  margin-right: .5em;
+  vertical-align: -.2em;
+  background: #33ff33;
+  box-shadow: 0 0 6px #33ff33;
+}
+
+.cmd.warn {
+  color: #ffaa00;
+  border-color: rgba(255, 170, 0, .35);
+  text-shadow: 0 0 6px rgba(255, 170, 0, .5);
+}
+
+.cmd.warn:active {
+  background: rgba(255, 170, 0, .1);
+}
+
+/* Rows you pick from: a printout line you can touch */
+.pick {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  letter-spacing: .04em;
+  color: rgba(51, 255, 51, .72);
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  padding: 7px 8px 7px 10px;
+  margin: 0 0 2px;
+  cursor: pointer;
+  text-shadow: 0 0 4px rgba(51, 255, 51, .3);
+  transition: color .25s, background .25s, border-color .25s, text-shadow .25s;
+}
+
+.pick:hover {
+  color: #b8ffbc;
+  background: rgba(51, 255, 51, .045);
+}
+
+.pick:active {
+  color: #f0fff1;
+  background: rgba(51, 255, 51, .1);
+  transition: none;
+}
+
+.pick.on {
+  color: #d6ffd9;
+  border-left-color: #33ff33;
+  background: rgba(51, 255, 51, .06);
+  text-shadow: 0 0 7px rgba(51, 255, 51, .7), 0 0 18px rgba(51, 255, 51, .3);
+}
+
+.pick .pk-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pick .pk-label {
+  min-width: 0;
+}
+
+.pick .pk-leader {
+  flex: 1;
+  min-width: 10px;
+  border-bottom: 1px dotted rgba(51, 255, 51, .35);
+  transform: translateY(-.3em);
+}
+
+.pick .pk-right {
+  white-space: nowrap;
+}
+
+.pick .pk-desc {
+  display: block;
+  margin-top: 3px;
+  font-size: .86em;
+  letter-spacing: .03em;
+  color: rgba(51, 255, 51, .5);
+}
+
+.pick.on .pk-desc {
+  color: rgba(51, 255, 51, .75);
+}
+
 @media (max-width: 559px) {
   .boot-hex { display: none; }
 }
@@ -1992,31 +2217,33 @@ button {
   animation: .3s ease-in-out h-glitch;
 }
 
+/* Sliders: a hairline track and a slab for a thumb (the boot's cursor) */
 input[type="range"] {
   appearance: none;
-  background: #1a1a1a;
-  border: 1px solid #33ff3330;
+  background: rgba(51, 255, 51, .22);
+  border: none;
   outline: none;
-  height: 3px;
+  height: 2px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   appearance: none;
   cursor: pointer;
-  background: #3f3;
+  background: #8dff93;
   border: none;
-  width: 8px;
-  height: 16px;
-  box-shadow: 0 0 6px #33ff3380;
+  width: 7px;
+  height: 22px;
+  box-shadow: 0 0 8px #33ff33, 0 0 18px rgba(51, 255, 51, .5);
 }
 
 input[type="range"]::-moz-range-thumb {
   cursor: pointer;
-  background: #3f3;
+  background: #8dff93;
   border: none;
   border-radius: 0;
-  width: 8px;
-  height: 16px;
+  width: 7px;
+  height: 22px;
+  box-shadow: 0 0 8px #33ff33;
 }
 
 ::-webkit-scrollbar {
@@ -2053,9 +2280,9 @@ input[type="range"]::-moz-range-thumb {
   button { min-height: 48px !important; padding: 0.4rem 0.6rem !important; font-size: 13px !important; }
 
   /* Wider range slider thumb for touch */
-  input[type="range"]::-webkit-slider-thumb { width: 18px !important; height: 28px !important; }
-  input[type="range"]::-moz-range-thumb { width: 18px !important; height: 28px !important; }
-  input[type="range"] { height: 6px !important; }
+  input[type="range"]::-webkit-slider-thumb { width: 11px !important; height: 30px !important; }
+  input[type="range"]::-moz-range-thumb { width: 11px !important; height: 30px !important; }
+  input[type="range"] { height: 3px !important; }
 
   /* Tighter gaps in flex-wrap rows */
   .flex.flex-wrap.gap-x-6 { gap: 0.5rem 0.75rem !important; }
@@ -15179,6 +15406,28 @@ const PHOSPHOR_LUT = (()=>{
     return lut;
 })();
 
+// Visit every dot whose grid cell lies within `r` of (x, y)
+function eachDotNear(f, x, y, r, fn) {
+    const x0 = Math.max(0, ((x - r) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r) / f.CS) | 0);
+    const y0 = Math.max(0, ((y - r) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r) / f.CS) | 0);
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+        const c = cy * f.gw + cx;
+        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
+    }
+}
+// Visit the dots in cells near the ring between radii r0 and r1 around (x, y) (skips the interior)
+function eachDotInRing(f, x, y, r0, r1, fn) {
+    const x0 = Math.max(0, ((x - r1) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r1) / f.CS) | 0);
+    const y0 = Math.max(0, ((y - r1) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r1) / f.CS) | 0);
+    const slack = f.CS * 0.75;                        // a cell's centre can be this far from its corners
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+        const dc = Math.hypot((cx + 0.5) * f.CS - x, (cy + 0.5) * f.CS - y);
+        if (dc < r0 - slack || dc > r1 + slack) continue;
+        const c = cy * f.gw + cx;
+        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
+    }
+}
+
 function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, engine }) {
     const canvasRef = (0, _react.useRef)(null);
     const fieldRef  = (0, _react.useRef)(null);
@@ -15369,189 +15618,6 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
             // In ocean mode the center ripple steps back so the swell reads
             const rippleMix = isOcean ? 0.3 : 1;
 
-            const drawN = (N * lod) | 0;
-            for (let i = 0; i < drawN; i++) {
-                const x  = bx[i], y = by[i];
-                const dx = x - cx, dy = y - cy;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const invDist = dist > 0.5 ? 1 / dist : 0;
-                const k_i = waveK[i];
-                const resp = respRate[i];
-
-                // ── Primary ripple: sharp pulse radiating from center ──
-                const phase1 = dist * k_i - t * omega + ph[i] * 0.35;
-                const s1 = Math.sin(phase1);
-                const s1p = s1 > 0 ? s1 : 0;
-                let ripple = s1p * s1p * s1p;               // narrow sharp pulse
-
-                // ── Isochronic multi-source interference ──
-                if (isoMulti) {
-                    const dx0 = x - isoS0x, dy0 = y - isoS0y;
-                    const d0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
-                    const dx1 = x - isoS1x, dy1 = y - isoS1y;
-                    const d1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-                    const dx2 = x - isoS2x, dy2 = y - isoS2y;
-                    const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-                    const dx3 = x - isoS3x, dy3 = y - isoS3y;
-                    const d3 = Math.sqrt(dx3 * dx3 + dy3 * dy3);
-                    const p0 = Math.sin(d0 * k_i - t * omega * 1.1 + 0.7);
-                    const p1 = Math.sin(d1 * k_i - t * omega * 0.9 + 1.9);
-                    const p2 = Math.sin(d2 * k_i - t * omega * 1.05 + 2.8);
-                    const p3 = Math.sin(d3 * k_i - t * omega * 0.95 + 4.1);
-                    const pp0 = p0 > 0 ? p0 : 0;
-                    const pp1 = p1 > 0 ? p1 : 0;
-                    const pp2 = p2 > 0 ? p2 : 0;
-                    const pp3 = p3 > 0 ? p3 : 0;
-                    const extra = pp0*pp0*pp0 + pp1*pp1*pp1 + pp2*pp2*pp2 + pp3*pp3*pp3;
-                    ripple = (ripple + extra) * 0.62;
-                }
-
-                // ── Ocean surface ──
-                let ox = 0, oy = 0, oceanI = 0;
-                if (isOcean) {
-                    const dn = density[i];                      // smooth noise: bends the wave fronts
-                    const th1 = K1 * (dx * d1x + dy * d1y) - t * W1 + dn * 0.9;
-                    const th2 = K2 * (dx * d2x + dy * d2y) - t * W2 - dn * 0.7 + 1.3;
-                    const th3 = K3 * (dx * d3x + dy * d3y) - t * W3 + ph[i] * 0.2;
-                    const sw1 = Math.sin(th1), sw2 = Math.sin(th2);
-                    ox = -(A1 * sw1 * d1x + A2 * sw2 * d2x) * oceanAmp;
-                    oy = -(A1 * sw1 * d1y + A2 * sw2 * d2y) * oceanAmp;
-                    const c1 = Math.cos(th1);
-                    // Surface height: swells, with the chop riding on the big crests
-                    const elev = 0.62 * c1 + 0.38 * Math.cos(th2) + 0.22 * Math.cos(th3) * (0.5 + 0.5 * c1);
-                    const crest = elev > 0 ? elev : 0;
-                    // thin, bright crest lines over a faint deep-water glow
-// Visit every dot whose grid cell lies within `r` of (x, y)
-function eachDotNear(f, x, y, r, fn) {
-    const x0 = Math.max(0, ((x - r) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r) / f.CS) | 0);
-    const y0 = Math.max(0, ((y - r) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r) / f.CS) | 0);
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-        const c = cy * f.gw + cx;
-        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
-    }
-}
-// Visit the dots in cells near the ring between radii r0 and r1 around (x, y) (skips the interior)
-function eachDotInRing(f, x, y, r0, r1, fn) {
-    const x0 = Math.max(0, ((x - r1) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r1) / f.CS) | 0);
-    const y0 = Math.max(0, ((y - r1) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r1) / f.CS) | 0);
-    const slack = f.CS * 0.75;                        // a cell's centre can be this far from its corners
-    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
-        const dc = Math.hypot((cx + 0.5) * f.CS - x, (cy + 0.5) * f.CS - y);
-        if (dc < r0 - slack || dc > r1 + slack) continue;
-        const c = cy * f.gw + cx;
-        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
-    }
-}
-
-                    oceanI = 0.12 + 0.88 * crest * crest * crest;
-                }
-
-                // ── Carrier shimmer: finer secondary ripple, also slow ──
-                const phase2 = dist * k_i * 1.7 - t * carrOmega + ph[i];
-                const s2 = Math.sin(phase2);
-                const s2p = s2 > 0 ? s2 : 0;
-                const carrierRipple = s2p * s2p * 0.28;
-
-                // ── Idle shimmer: independent per-particle breathing ──
-                const idle = (Math.sin(t * 0.85 + ph[i] * 4.1) * 0.5 + 0.5) * 0.18;
-
-                // Ambient particle-level contributions
-                const pinkBoost = isPink
-                    ? (Math.random() < 0.09 ? 0.18 : 0) + 0.05 * Math.sin(t * 1.6 + ph[i] * 3.3)
-                    : 0;
-                const brownBoost = isBrown
-                    ? (brownPulse - 1) * 0.55 + 0.06 * Math.sin(dist * 0.005 - t * 0.4)
-                    : 0;
-                const ambBoost = pinkBoost + brownBoost;
-
-                // ── Compose intensity ──
-                let alpha = staticBase * (isOcean ? 0.6 : 1)
-                          + ripple * rippleStr * resp * 1.5 * rippleMix
-                          + oceanI * oceanAmp * (0.75 + 0.5 * resp) * 1.0
-                          + carrierRipple * (vol * 0.6 + 0.1)
-                          + idle * vol * 0.4
-                          + ambBoost * vol;
-
-                if (alpha > 1) alpha = 1;
-                if (alpha < 0.02) continue;  // skip near-invisible dots — major perf win
-
-                // Radial displacement: particles surf on the passing ripple front
-                const push = ripple * rippleStr * resp * 4 * rippleMix;
-                ox += dx * invDist * push;
-                oy += dy * invDist * push;
-
-                bctx.fillStyle = PHOSPHOR_LUT[(alpha * 255) | 0];
-                bctx.fillRect((x + ox) | 0, (y + oy) | 0, sz, sz);
-            }
-
-            // (No beat-synced rings or flashes: isochronic mode shows the interference of the
-            // drifting sources in the field above, and nothing pulses on and off.)
-
-            // ── Compose: the picture, then glow ──
-            ctx.globalCompositeOperation = "source-over";
-            ctx.globalAlpha = 1;
-            ctx.drawImage(buf.c, 0, 0);
-            if (quality > 0) {
-                h2.x.drawImage(buf.c, 0, 0, h2.c.width, h2.c.height);
-                h4.x.drawImage(h2.c, 0, 0, h4.c.width, h4.c.height);
-                squareInto(s4, h4);
-                ctx.globalCompositeOperation = "lighter";
-                addGain(s4.c, PHOSPHOR.bloom);
-                if (quality > 1) {
-                    h8.x.drawImage(h4.c, 0, 0, h8.c.width, h8.c.height);
-                    squareInto(s8, h8);
-                    addGain(s8.c, PHOSPHOR.halo);
-                }
-                ctx.globalAlpha = 1;
-                ctx.globalCompositeOperation = "source-over";
-            }
-
-            // If frames start taking too long (slow phone), drop the glow first, then some dots
-            workEma = workEma * 0.9 + (performance.now() - w0) * 0.1;
-            if (workEma > 18) {
-                if (quality > 0) quality--;
-                else if (lod > 0.45) lod -= 0.15;
-                workEma = 0;
-            }
-        };
-
-        animRef.current = requestAnimationFrame(draw);
-        return ()=>cancelAnimationFrame(animRef.current);
-    }, [beat, carrier, volume, playing, mode, ambient]);
-
-    return (0, _jsxRuntime.jsx)("canvas", {
-        ref: canvasRef,
-        width: IS_MOBILE ? 360 : 680,
-        height: IS_MOBILE ? 200 : 340,
-        style: {
-            width: "100%",
-            display: "block",
-            borderRadius: "1px",
-        }
-    });
-}
-/* ═══════════════════════════════════════════════════════════
-   CRT COMPONENTS
-   ═══════════════════════════════════════════════════════════ */ // Waveform rendered as ASCII
-function AsciiWaveform({ beat, playing, width = 64 }) {
-    const [frame, setFrame] = (0, _react.useState)(0);
-    (0, _react.useEffect)(()=>{
-        if (!playing) return;
-        const id = setInterval(()=>setFrame((f)=>f + 1), 80);
-        return ()=>clearInterval(id);
-    }, [
-        playing
-    ]);
-    const chars = "\u2591\u2592\u2593\u2588\u2593\u2592\u2591";
-    let line1 = "", line2 = "";
-    for(let x = 0; x < width; x++)if (!playing) {
-        line1 += "\u2500";
-        line2 += "\u2500";
-    } else {
-        const t = frame * 0.15;
-        const y1 = Math.sin(x / width * Math.PI * 6 + t) * 3;
-        const y2 = Math.sin(x / width * Math.PI * 6 + t + beat * 0.1) * 3;
-        const envelope = Math.cos(x / width * Math.PI * 2 * (beat / 6) + t * 0.5);
             // ── Rain: a droplet falls into the sea ──
             // A drop is a bright speck that falls and lands; after that the sea's own dots do the
             // work. The dots under it brighten as it nears. At the impact a crater opens, a few dots
@@ -15678,6 +15744,195 @@ function AsciiWaveform({ beat, playing, width = 64 }) {
                 }
             }
 
+            const drawN = (N * lod) | 0;
+            for (let i = 0; i < drawN; i++) {
+                const x  = bx[i], y = by[i];
+                const dx = x - cx, dy = y - cy;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const invDist = dist > 0.5 ? 1 / dist : 0;
+                const k_i = waveK[i];
+                const resp = respRate[i];
+
+                // ── Primary ripple: sharp pulse radiating from center ──
+                const phase1 = dist * k_i - t * omega + ph[i] * 0.35;
+                const s1 = Math.sin(phase1);
+                const s1p = s1 > 0 ? s1 : 0;
+                let ripple = s1p * s1p * s1p;               // narrow sharp pulse
+
+                // ── Isochronic multi-source interference ──
+                if (isoMulti) {
+                    const dx0 = x - isoS0x, dy0 = y - isoS0y;
+                    const d0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
+                    const dx1 = x - isoS1x, dy1 = y - isoS1y;
+                    const d1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+                    const dx2 = x - isoS2x, dy2 = y - isoS2y;
+                    const d2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                    const dx3 = x - isoS3x, dy3 = y - isoS3y;
+                    const d3 = Math.sqrt(dx3 * dx3 + dy3 * dy3);
+                    const p0 = Math.sin(d0 * k_i - t * omega * 1.1 + 0.7);
+                    const p1 = Math.sin(d1 * k_i - t * omega * 0.9 + 1.9);
+                    const p2 = Math.sin(d2 * k_i - t * omega * 1.05 + 2.8);
+                    const p3 = Math.sin(d3 * k_i - t * omega * 0.95 + 4.1);
+                    const pp0 = p0 > 0 ? p0 : 0;
+                    const pp1 = p1 > 0 ? p1 : 0;
+                    const pp2 = p2 > 0 ? p2 : 0;
+                    const pp3 = p3 > 0 ? p3 : 0;
+                    const extra = pp0*pp0*pp0 + pp1*pp1*pp1 + pp2*pp2*pp2 + pp3*pp3*pp3;
+                    ripple = (ripple + extra) * 0.62;
+                }
+
+                // ── Ocean surface ──
+                let ox = 0, oy = 0, oceanI = 0;
+                if (isOcean) {
+                    const dn = density[i];                      // smooth noise: bends the wave fronts
+                    const th1 = K1 * (dx * d1x + dy * d1y) - t * W1 + dn * 0.9;
+                    const th2 = K2 * (dx * d2x + dy * d2y) - t * W2 - dn * 0.7 + 1.3;
+                    const th3 = K3 * (dx * d3x + dy * d3y) - t * W3 + ph[i] * 0.2;
+                    const sw1 = Math.sin(th1), sw2 = Math.sin(th2);
+                    ox = -(A1 * sw1 * d1x + A2 * sw2 * d2x) * oceanAmp;
+                    oy = -(A1 * sw1 * d1y + A2 * sw2 * d2y) * oceanAmp;
+                    const c1 = Math.cos(th1);
+                    // Surface height: swells, with the chop riding on the big crests
+                    const elev = 0.62 * c1 + 0.38 * Math.cos(th2) + 0.22 * Math.cos(th3) * (0.5 + 0.5 * c1);
+                    const crest = elev > 0 ? elev : 0;
+                    // thin, bright crest lines over a faint deep-water glow
+                    oceanI = 0.12 + 0.88 * crest * crest * crest;
+                }
+
+                // ── Carrier shimmer: finer secondary ripple, also slow ──
+                const phase2 = dist * k_i * 1.7 - t * carrOmega + ph[i];
+                const s2 = Math.sin(phase2);
+                const s2p = s2 > 0 ? s2 : 0;
+                const carrierRipple = s2p * s2p * 0.28;
+
+                // ── Idle shimmer: independent per-particle breathing ──
+                const idle = (Math.sin(t * 0.85 + ph[i] * 4.1) * 0.5 + 0.5) * 0.18;
+
+                // Ambient particle-level contributions
+                const pinkBoost = isPink
+                    ? (Math.random() < 0.09 ? 0.18 : 0) + 0.05 * Math.sin(t * 1.6 + ph[i] * 3.3)
+                    : 0;
+                const brownBoost = isBrown
+                    ? (brownPulse - 1) * 0.55 + 0.06 * Math.sin(dist * 0.005 - t * 0.4)
+                    : 0;
+                const ambBoost = pinkBoost + brownBoost;
+
+                // ── Compose intensity ──
+                let alpha = staticBase * (isOcean ? 0.6 : 1)
+                          + ripple * rippleStr * resp * 1.5 * rippleMix
+                          + oceanI * oceanAmp * (0.75 + 0.5 * resp) * 1.0
+                          + carrierRipple * (vol * 0.6 + 0.1)
+                          + idle * vol * 0.4
+                          + ambBoost * vol;
+                if (hasDrops) alpha += dAdd[i * 3];
+
+                if (alpha > 1) alpha = 1;
+                if (alpha < 0.02) continue;  // skip near-invisible dots — major perf win
+
+                // Radial displacement: particles surf on the passing ripple front
+                const push = ripple * rippleStr * resp * 4 * rippleMix;
+                ox += dx * invDist * push;
+                oy += dy * invDist * push;
+                let sz = sizeArr[i];
+                if (hasDrops) {
+                    ox += dAdd[i * 3 + 1];
+                    oy += dAdd[i * 3 + 2];
+                    if (dAdd[i * 3] > 0.45) sz = 2;       // dots lit by a drop read a little bolder
+                }
+
+                bctx.fillStyle = PHOSPHOR_LUT[(alpha * 255) | 0];
+                bctx.fillRect((x + ox) | 0, (y + oy) | 0, sz, sz);
+            }
+
+            // (No beat-synced rings or flashes: isochronic mode shows the interference of the
+            // drifting sources in the field above, and nothing pulses on and off.)
+
+            // ── Compose: the picture, then glow ──
+            ctx.globalCompositeOperation = "source-over";
+            ctx.globalAlpha = 1;
+            ctx.drawImage(buf.c, 0, 0);
+            if (quality > 0) {
+                h2.x.drawImage(buf.c, 0, 0, h2.c.width, h2.c.height);
+                h4.x.drawImage(h2.c, 0, 0, h4.c.width, h4.c.height);
+                squareInto(s4, h4);
+                ctx.globalCompositeOperation = "lighter";
+                addGain(s4.c, PHOSPHOR.bloom);
+                if (quality > 1) {
+                    h8.x.drawImage(h4.c, 0, 0, h8.c.width, h8.c.height);
+                    squareInto(s8, h8);
+                    addGain(s8.c, PHOSPHOR.halo);
+                }
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = "source-over";
+            }
+
+            // Falling drops: a crisp teardrop above the water (not painted into the afterglow, so it
+            // leaves no streak), with a small halo and a short tail that lengthens as it speeds up
+            for (let f = 0; f < falling.length; f += 4) {
+                const fx = Math.round(falling[f]), fy = Math.round(falling[f + 1]), fs = falling[f + 3];
+                const tail = Math.min(34 * fs, falling[f + 2] * 0.08);
+                const halo = ctx.createRadialGradient(fx, fy, 0, fx, fy, 13 * fs);
+                halo.addColorStop(0, "rgba(220,255,225,0.65)");
+                halo.addColorStop(1, "rgba(51,255,51,0)");
+                ctx.fillStyle = halo;
+                ctx.fillRect(fx - 14 * fs, fy - 14 * fs, 28 * fs, 28 * fs);
+                // a teardrop: a rounded head, a fine point above it, and a few fading specks behind
+                for (let k = 1; k <= 5; k++) {
+                    ctx.fillStyle = PHOSPHOR_LUT[(255 * (1 - k / 6) * 0.85) | 0];
+                    ctx.fillRect(fx, Math.round(fy - 8 - k * tail / 5), 1, 2);
+                }
+                ctx.fillStyle = PHOSPHOR_LUT[255];
+                ctx.fillRect(fx - 2, fy - 3, 4, 6);          // head
+                ctx.fillRect(fx - 1, fy - 6, 2, 3);          // neck
+                ctx.fillRect(fx, fy - 8, 1, 2);              // point
+            }
+
+            // If frames start taking too long (slow phone), drop the glow first, then some dots
+            workEma = workEma * 0.9 + (performance.now() - w0) * 0.1;
+            if (workEma > 18) {
+                if (quality > 0) quality--;
+                else if (lod > 0.45) lod -= 0.15;
+                workEma = 0;
+            }
+        };
+
+        animRef.current = requestAnimationFrame(draw);
+        return ()=>cancelAnimationFrame(animRef.current);
+    }, [beat, carrier, volume, playing, mode, ambient]);
+
+    return (0, _jsxRuntime.jsx)("canvas", {
+        ref: canvasRef,
+        width: IS_MOBILE ? 360 : 680,
+        height: IS_MOBILE ? 200 : 340,
+        style: {
+            width: "100%",
+            display: "block",
+            borderRadius: "1px",
+        }
+    });
+}
+/* ═══════════════════════════════════════════════════════════
+   CRT COMPONENTS
+   ═══════════════════════════════════════════════════════════ */ // Waveform rendered as ASCII
+function AsciiWaveform({ beat, playing, width = 64 }) {
+    const [frame, setFrame] = (0, _react.useState)(0);
+    (0, _react.useEffect)(()=>{
+        if (!playing) return;
+        const id = setInterval(()=>setFrame((f)=>f + 1), 80);
+        return ()=>clearInterval(id);
+    }, [
+        playing
+    ]);
+    const chars = "\u2591\u2592\u2593\u2588\u2593\u2592\u2591";
+    let line1 = "", line2 = "";
+    for(let x = 0; x < width; x++)if (!playing) {
+        line1 += "\u2500";
+        line2 += "\u2500";
+    } else {
+        const t = frame * 0.15;
+        const y1 = Math.sin(x / width * Math.PI * 6 + t) * 3;
+        const y2 = Math.sin(x / width * Math.PI * 6 + t + beat * 0.1) * 3;
+        const envelope = Math.cos(x / width * Math.PI * 2 * (beat / 6) + t * 0.5);
         const idx1 = Math.floor((y1 * envelope + 3) / 6 * (chars.length - 1));
         const idx2 = Math.floor((y2 * envelope + 3) / 6 * (chars.length - 1));
         line1 += chars[Math.max(0, Math.min(chars.length - 1, idx1))];
@@ -15758,7 +16013,6 @@ function playClick() {
 // Boot audio: every voice runs through one quiet bus so the whole sequence sits well under
 // your session volume, with a short damped echo on the pings for a sonar feel.
 function createBootAudio() {
-                if (hasDrops) alpha += dAdd[i * 3];
     const ctx = getUiCtx();
     const bus = ctx.createGain();
     bus.gain.value = 0.9;
@@ -15767,12 +16021,6 @@ function createBootAudio() {
     const echo = ctx.createDelay(1);
     const feedback = ctx.createGain();
     const damp = ctx.createBiquadFilter();
-                let sz = sizeArr[i];
-                if (hasDrops) {
-                    ox += dAdd[i * 3 + 1];
-                    oy += dAdd[i * 3 + 2];
-                    if (dAdd[i * 3] > 0.45) sz = 2;       // dots lit by a drop read a little bolder
-                }
     echo.delayTime.value = 0.31;
     feedback.gain.value = 0.36;
     damp.type = "lowpass";
@@ -15866,27 +16114,6 @@ function createBootAudio() {
             dgg.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
             dg.connect(dgg);
             dgg.connect(bus);
-            // Falling drops: a crisp teardrop above the water (not painted into the afterglow, so it
-            // leaves no streak), with a small halo and a short tail that lengthens as it speeds up
-            for (let f = 0; f < falling.length; f += 4) {
-                const fx = Math.round(falling[f]), fy = Math.round(falling[f + 1]), fs = falling[f + 3];
-                const tail = Math.min(34 * fs, falling[f + 2] * 0.08);
-                const halo = ctx.createRadialGradient(fx, fy, 0, fx, fy, 13 * fs);
-                halo.addColorStop(0, "rgba(220,255,225,0.65)");
-                halo.addColorStop(1, "rgba(51,255,51,0)");
-                ctx.fillStyle = halo;
-                ctx.fillRect(fx - 14 * fs, fy - 14 * fs, 28 * fs, 28 * fs);
-                // a teardrop: a rounded head, a fine point above it, and a few fading specks behind
-                for (let k = 1; k <= 5; k++) {
-                    ctx.fillStyle = PHOSPHOR_LUT[(255 * (1 - k / 6) * 0.85) | 0];
-                    ctx.fillRect(fx, Math.round(fy - 8 - k * tail / 5), 1, 2);
-                }
-                ctx.fillStyle = PHOSPHOR_LUT[255];
-                ctx.fillRect(fx - 2, fy - 3, 4, 6);          // head
-                ctx.fillRect(fx - 1, fy - 6, 2, 3);          // neck
-                ctx.fillRect(fx, fy - 8, 1, 2);              // point
-            }
-
             dg.start(t + 0.3);
             lfo.start(t + 0.3);
             dg.stop(t + 1.7);
@@ -15953,6 +16180,47 @@ function bootGreeting(d) {
     if (h >= 17 && h < 22) return "GOOD EVENING, TRAVELER.";
     return "IT IS LATE, TRAVELER.";
 }
+// What the machine says: sayings and practice directions from the traditions this project reads
+// across, each credited. Short sayings that are widely attributed stand as they are; translated or
+// summarized texts are credited "AFTER ..." (the wording is ours, not a translator's), and practice
+// directions are credited to the practice. Tags pick where a line is spoken: a = alpha, th = theta,
+// de = delta, fo = beta/gamma, dr = drum (isochronic), rt = return, lg = logging, bo = boot.
+const SAYINGS = [
+    ["RECOGNIZE THE DREAM AS A DREAM.", "TIBETAN DREAM YOGA", "th de bo"],
+    ["AS YOU FALL ASLEEP, REST YOUR ATTENTION AT THE THROAT AND SET YOUR INTENTION.", "TIBETAN DREAM YOGA", "a th bo"],
+    ["THROUGH THE DAY, TREAT WHAT YOU SEE AS A DREAM.", "TIBETAN DREAM YOGA", "a fo bo"],
+    ["LIE ON YOUR RIGHT SIDE, IN THE LION'S POSTURE.", "TIBETAN DREAM YOGA", "a"],
+    ["WHEN NO DREAM ARISES, REST IN THE CLEAR LIGHT.", "TIBETAN DREAM YOGA", "de"],
+    ["WHATEVER APPEARS, KNOW IT AS THE DISPLAY OF YOUR OWN MIND.", "AFTER THE BARDO THODOL", "th de bo"],
+    ["RECOGNIZE THE CLEAR LIGHT AS THE NATURE OF YOUR OWN MIND.", "AFTER THE BARDO THODOL", "de bo"],
+    ["LET GO OF PAST, FUTURE AND PRESENT. DON'T ANALYZE. DON'T FORCE. REST.", "AFTER TILOPA'S SIX WORDS OF ADVICE", "a th bo"],
+    ["ALL MADE THINGS ARE LIKE A DREAM, A PHANTOM, A BUBBLE, A SHADOW; LIKE DEW, LIKE LIGHTNING. SEE THEM SO.", "AFTER THE DIAMOND SUTRA", "th fo bo"],
+    ["BEYOND WAKING, DREAMING AND DEEP SLEEP LIES THE FOURTH.", "AFTER THE MANDUKYA UPANISHAD", "a th de bo"],
+    ["TAT TVAM ASI: YOU ARE THAT.", "CHANDOGYA UPANISHAD", "fo bo"],
+    ["ZHUANG ZHOU DREAMED HE WAS A BUTTERFLY, AND WOKE NOT KNOWING WHICH HAD BEEN THE DREAM.", "AFTER ZHUANGZI", "th bo"],
+    ["RETURN TO THE ROOT. THIS IS CALLED STILLNESS.", "AFTER THE TAO TE CHING, CH. 16", "a rt"],
+    ["PHILOSOPHY IS PRACTICE FOR DYING.", "AFTER PLATO'S PHAEDO", "de bo"],
+    ["DIE BEFORE YOU DIE.", "SUFI SAYING", "de bo"],
+    ["AS ABOVE, SO BELOW.", "HERMETIC, THE EMERALD TABLET", "fo bo"],
+    ["KNOW THYSELF.", "DELPHIC MAXIM", "fo bo"],
+    ["MIND GOES BEFORE ALL THINGS; ALL THINGS ARE MADE BY MIND.", "AFTER THE DHAMMAPADA", "fo bo"],
+    ["WHAT YOU BRING FORTH FROM WITHIN YOU WILL SAVE YOU.", "AFTER THE GOSPEL OF THOMAS, 70", "de lg bo"],
+    ["THE KINGDOM IS WITHIN YOU, AND IT IS OUTSIDE YOU.", "AFTER THE GOSPEL OF THOMAS, 3", "fo bo"],
+    ["I AM A CHILD OF EARTH AND STARRY HEAVEN; MY RACE IS HEAVENLY.", "PETELIA GOLD TABLET", "de bo"],
+    ["BE CLEAR ABOUT YOUR INTENTION, AND WHERE YOU ARE GOING, BEFORE YOU BEGIN.", "SHAMANIC JOURNEYING", "dr bo"],
+    ["GO DOWN BY A WAY YOU KNOW: A TREE ROOT, A CAVE, A HOLE IN THE EARTH.", "SHAMANIC JOURNEYING", "dr th bo"],
+    ["THE DRUM CARRIES THE JOURNEY.", "SHAMANIC JOURNEYING", "dr"],
+    ["WHEN THE DRUM CALLS YOU BACK, RETURN THE WAY YOU CAME.", "SHAMANIC JOURNEYING", "dr rt"],
+    ["WRITE IT DOWN WHILE IT IS FRESH.", "DREAM PRACTICE", "rt lg"]
+];
+// A random saying for a tag, not repeating `avoid` when there is a choice
+function pickSaying(tag, avoid) {
+    const pool = SAYINGS.filter((s)=>s[2].split(" ").includes(tag));
+    if (!pool.length) return null;
+    const choices = pool.length > 1 ? pool.filter((s)=>s[0] !== avoid) : pool;
+    const s = choices[Math.floor(Math.random() * choices.length)];
+    return { text: s[0], src: s[1] };
+}
 // What the machine remembers: read back from the session log kept on this device
 function bootMemoryRows() {
     const logs = logReadJson(LOG_KEY, []);
@@ -15981,7 +16249,7 @@ function bootMemoryRows() {
 }
 // A sonar scope: five dotted rings (the depth levels) light one at a time while a beam sweeps,
 // then the centre settles into a slow breath.
-function DepthScope({ lit, awake }) {
+function DepthScope({ lit, awake, size, res }) {
     const ref = _react.useRef(null);
     const live = _react.useRef({ lit: 0, awake: false });
     live.current.lit = lit;
@@ -16071,10 +16339,10 @@ function DepthScope({ lit, awake }) {
     }, []);
     return lh("canvas", {
         ref,
-        width: 360,
-        height: 360,
+        width: res || 360,
+        height: res || 360,
         style: {
-            width: "clamp(116px, 32vw, 200px)",
+            width: size || "clamp(116px, 32vw, 200px)",
             height: "auto",
             aspectRatio: "1",
             flex: "0 0 auto",
@@ -16089,7 +16357,7 @@ const bootInk = (fresh)=>({
         transition: fresh ? "none" : "color .9s ease-out, text-shadow .9s ease-out"
     });
 // A label, a dotted leader and a status, like a self-test printout
-function BootRow({ label, leader, value, status, fresh, flash, hex, wrap }) {
+function BootRow({ label, leader, value, status, fresh, flash, hex, wrap, wrapStatus }) {
     const caret = fresh ? lh("span", { className: "boot-caret" }) : null;
     return lh("div", {
         style: { display: "flex", alignItems: "baseline", gap: "8px", minHeight: "1.55em", ...bootInk(fresh) }
@@ -16100,7 +16368,7 @@ function BootRow({ label, leader, value, status, fresh, flash, hex, wrap }) {
             borderBottom: leader ? "1px dotted rgba(51,255,51,0.4)" : "1px dotted transparent",
             transform: "translateY(-0.32em)"
         }
-    }), hex ? lh("span", { className: "boot-hex", style: { opacity: 0.5, fontSize: "0.85em" } }, hex) : null, lh("span", { style: { whiteSpace: "nowrap" } }, value ? lh("span", { style: { opacity: 0.7 } }, value, status ? " " : "") : null, status ? lh("span", {
+    }), hex ? lh("span", { className: "boot-hex", style: { opacity: 0.5, fontSize: "0.85em" } }, hex) : null, lh("span", { style: { whiteSpace: wrapStatus ? "normal" : "nowrap", textAlign: "right" } }, value ? lh("span", { style: { opacity: 0.7 } }, value, status ? " " : "") : null, status ? lh("span", {
         style: flash ? { color: "#e6ffe8", textShadow: "0 0 8px #33ff33, 0 0 20px rgba(51,255,51,0.8)" } : {
             color: "#33ff33",
             textShadow: "0 0 5px rgba(51,255,51,0.6)",
@@ -16149,6 +16417,8 @@ function renderBootItem(it) {
                     transition: it.fresh ? "none" : "color 1.2s ease-out, text-shadow 1.2s ease-out"
                 }
             }, lh("span", { style: { opacity: 0.5 } }, "> "), it.text, caret);
+        case "cite":
+            return lh("div", { key: it.id, style: { fontSize: "0.8em", letterSpacing: "0.12em", margin: "0 0 2px 1.4em", minHeight: "1.55em", opacity: 0.75, ...ink } }, it.text, caret);
         case "warn":
             return lh("div", { key: it.id, style: { fontSize: "0.85em", minHeight: "1.55em", color: "#ffaa00", textShadow: "0 0 5px rgba(255,170,0,0.5)", opacity: it.fresh ? 1 : 0.8 } }, it.text, caret);
         case "prompt":
@@ -16320,9 +16590,15 @@ function BootSequence({ onComplete }) {
             await wait(500);
             await voice(bootGreeting(new Date()), 30);
             await wait(450);
-            await voice("THE THRESHOLD IS OPEN.", 30);
+            await voice("YOU ARE MORE THAN YOUR PHYSICAL BODY.", 30);
             await wait(450);
-            await voice("I WILL STAY WITH YOU AS LONG AS I CAN.", 26);
+            // then one saying or direction from the traditions, credited
+            const saying = pickSaying("bo");
+            if (saying) {
+                await voice(saying.text, 26);
+                const cite = add({ kind: "cite", text: "" });
+                await type(cite, `— ${saying.src}`, 12);
+            }
             await wait(550);
             add({ kind: "gap" });
             await line({ kind: "warn", text: "WARNING: STEREO HEADPHONES REQUIRED FOR BINAURAL MODE", speed: 6, after: 40 });
@@ -16405,7 +16681,7 @@ function BootSequence({ onComplete }) {
 function PhaseBar({ preset, phaseIdx, elapsed }) {
     const totalSec = preset.phases.reduce((s, p)=>s + p.minutes * 60, 0);
     let accumulated = 0;
-    const barWidth = IS_MOBILE ? Math.min(30, Math.floor((window.innerWidth - 60) / 9)) : 48;
+    const barWidth = Math.min(48, Math.floor((window.innerWidth - 64) / 9));
     return /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
         style: {
             fontFamily: "inherit"
@@ -16700,25 +16976,14 @@ function DimOverlay({ log, onExit }) {
     return lh("div", { style: { position: "fixed", inset: 0, zIndex: 1000, background: "#000", display: "flex", flexDirection: "column", touchAction: "manipulation", userSelect: "none" } }, lh("button", {
         onClick: onExit,
         style: { flex: "0 0 56px", color: faint, background: "transparent", border: "none", borderBottom: "1px solid #0b200b", fontSize: "13px", textAlign: "left", padding: "0 16px", cursor: "pointer" }
-    }, a ? `● ${logClock(Math.max(0, Math.floor((now - a.startedAt) / 1000)))}${lastM ? "  ·  LAST: " + logMarkerLabel(lastM.type) + " @ " + logClock(lastM.t) : ""}   [TAP: EXIT]` : "[TAP HERE TO EXIT DIM]"), a && lh("div", { style: { flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "repeat(3, 1fr)", gap: "2px", padding: "2px" } }, LOG_MARKERS.map((m)=>lh("button", {
+    }, a ? `● ${logClock(Math.max(0, Math.floor((now - a.startedAt) / 1000)))}${lastM ? "  ·  LAST: " + logMarkerLabel(lastM.type) + " @ " + logClock(lastM.t) : ""}   TAP: EXIT` : "TAP HERE TO EXIT DIM"), a && lh("div", { style: { flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "repeat(3, 1fr)", gap: "2px", padding: "2px" } }, LOG_MARKERS.map((m)=>lh("button", {
         key: m.type,
         onClick: ()=>log.addMarker(m.type),
         style: { color: faint, background: "transparent", border: "1px solid #0b200b", fontSize: "13px", cursor: "pointer", minHeight: 0, whiteSpace: "pre-line" }
     }, `${m.key}\n${m.label}`))));
 }
 function LogBtn({ label, active, warn, onClick }) {
-    return lh("button", {
-        onClick,
-        className: "transition-all mr-2 mb-1 px-2 py-0.5",
-        style: {
-            fontSize: "14px",
-            color: warn ? "#ff4444" : active ? "#0a0a0a" : "#33ff33",
-            background: active ? "#33ff33" : "transparent",
-            border: `1px solid ${warn ? "#ff444460" : active ? "#33ff3390" : "#33ff3340"}`,
-            textShadow: active ? "none" : warn ? "0 0 5px #ff4444" : "0 0 5px #33ff3360",
-            cursor: "pointer"
-        }
-    }, label);
+    return lh("button", { onClick, className: "cmd" + (active ? " on" : "") + (warn ? " warn" : "") }, label);
 }
 // Shown on every tab while a log is open, so markers are one tap away.
 function MarkerPad({ log }) {
@@ -16744,11 +17009,10 @@ function MarkerPad({ log }) {
             setHaptic(!haptic);
         },
         style: { color: haptic ? "#33ff33" : "#33ff3370", cursor: "pointer", background: "transparent", marginRight: "10px" }
-    }, `[HAPTIC: ${haptic ? "ON" : "OFF"}]`), lastM && lh("button", { onClick: log.undoMarker, style: { color: "#ffaa00", cursor: "pointer", background: "transparent" } }, "[UNDO]"))));
+    }, `HAPTIC: ${haptic ? "ON" : "OFF"}`), lastM && lh("button", { onClick: log.undoMarker, style: { color: "#ffaa00", cursor: "pointer", background: "transparent" } }, "UNDO"))));
 }
 function LogFrame({ title, children }) {
-    const dim = { color: "#33ff3360", fontSize: "14px" };
-    return lh("div", { className: "mb-3" }, lh("div", { style: dim }, "╔", "═".repeat(title.length + 2), "╗"), lh("div", { style: dim }, "║ ", lh("span", { style: { color: "#33ff33" }, className: "glow-subtle" }, title), " ║"), lh("div", { style: dim }, "╚", "═".repeat(title.length + 2), "╝"), lh("div", { className: "mt-1 ml-1" }, children));
+    return lh("section", { style: { margin: "14px 0 12px" } }, lh("div", { className: "sect-title" }, title), lh("div", { className: "sect-rule" }), lh("div", { style: { marginTop: "8px" } }, children));
 }
 function LogField({ label, children }) {
     return lh("div", { style: { marginBottom: "10px" } }, lh("div", { style: { color: "#33ff3370", fontSize: "13px", marginBottom: "3px" } }, label), children);
@@ -16758,7 +17022,7 @@ function LogEditor({ log, entry }) {
     const n = entry.note || {};
     const set = (patch)=>log.updateNote(entry.id, patch);
     const mins = Math.max(1, Math.round((entry.endedAt - entry.startedAt) / 60000));
-    return lh("div", { style: { border: "1px solid #33ff3340", padding: "10px", marginBottom: "12px" } }, lh("div", { style: { color: "#33ff33", marginBottom: "8px" } }, `FIELD NOTE — ${new Date(entry.startedAt).toLocaleString()} — ~${mins} MIN`), lh(LogField, { label: "TECHNIQUE / CONTEXT" }, lh("input", { type: "text", value: n.technique || "", onChange: (e)=>set({ technique: e.target.value }), style: logInputStyle })), lh(LogField, { label: "PRE-STATE (BODY, MIND, WHAT YOU BROUGHT IN)" }, lh("textarea", { rows: 2, value: n.preState || "", onChange: (e)=>set({ preState: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHAT HAPPENED (CAPTURE THE TEXTURE FIRST)" }, lh("textarea", { rows: 6, value: n.what || "", onChange: (e)=>set({ what: e.target.value }), style: logInputStyle })), lh(LogField, { label: "SELF-RATED DEPTH" }, LOG_DEPTHS.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.depth === id, onClick: ()=>set({ depth: n.depth === id ? "" : id }) }))), lh(LogField, { label: "PHENOMENA (PRE-CHECKED FROM YOUR MARKS)" }, LOG_CHECKS.map(([k, label])=>lh(LogBtn, { key: k, label: label.split(" (")[0].toUpperCase(), active: !!(n.checks && n.checks[k]), onClick: ()=>set({ checks: { ...n.checks, [k]: !(n.checks && n.checks[k]) } }) }))), lh(LogField, { label: "WHAT STOPPED IT / HOW IT ENDED" }, lh("textarea", { rows: 2, value: n.ended || "", onChange: (e)=>set({ ended: e.target.value }), style: logInputStyle })), lh(LogField, { label: "NOTES FOR NEXT SESSION" }, lh("textarea", { rows: 2, value: n.next || "", onChange: (e)=>set({ next: e.target.value }), style: logInputStyle })), lh(LogBtn, { label: "[SAVE & CLOSE]", onClick: ()=>log.setEditingId(null) }), lh(LogBtn, { label: "[DOWNLOAD .MD]", onClick: ()=>logDownload(`${logFileStamp(entry)}.md`, logToMarkdown(entry)) }));
+    return lh("div", { style: { border: "1px solid #33ff3340", padding: "10px", marginBottom: "12px" } }, lh("div", { style: { color: "#33ff33", marginBottom: "8px" } }, `FIELD NOTE — ${new Date(entry.startedAt).toLocaleString()} — ~${mins} MIN`), lh(LogField, { label: "TECHNIQUE / CONTEXT" }, lh("input", { type: "text", value: n.technique || "", onChange: (e)=>set({ technique: e.target.value }), style: logInputStyle })), lh(LogField, { label: "PRE-STATE (BODY, MIND, WHAT YOU BROUGHT IN)" }, lh("textarea", { rows: 2, value: n.preState || "", onChange: (e)=>set({ preState: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHAT HAPPENED (CAPTURE THE TEXTURE FIRST)" }, lh("textarea", { rows: 6, value: n.what || "", onChange: (e)=>set({ what: e.target.value }), style: logInputStyle })), lh(LogField, { label: "SELF-RATED DEPTH" }, LOG_DEPTHS.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.depth === id, onClick: ()=>set({ depth: n.depth === id ? "" : id }) }))), lh(LogField, { label: "PHENOMENA (PRE-CHECKED FROM YOUR MARKS)" }, LOG_CHECKS.map(([k, label])=>lh(LogBtn, { key: k, label: label.split(" (")[0].toUpperCase(), active: !!(n.checks && n.checks[k]), onClick: ()=>set({ checks: { ...n.checks, [k]: !(n.checks && n.checks[k]) } }) }))), lh(LogField, { label: "WHAT STOPPED IT / HOW IT ENDED" }, lh("textarea", { rows: 2, value: n.ended || "", onChange: (e)=>set({ ended: e.target.value }), style: logInputStyle })), lh(LogField, { label: "NOTES FOR NEXT SESSION" }, lh("textarea", { rows: 2, value: n.next || "", onChange: (e)=>set({ next: e.target.value }), style: logInputStyle })), lh(LogBtn, { label: "SAVE & CLOSE", onClick: ()=>log.setEditingId(null) }), lh(LogBtn, { label: "DOWNLOAD .MD", onClick: ()=>logDownload(`${logFileStamp(entry)}.md`, logToMarkdown(entry)) }));
 }
 function LogPanel({ log }) {
     const day = 86400000;
@@ -16767,16 +17031,133 @@ function LogPanel({ log }) {
     const held = (d)=>real.filter((l)=>Date.now() - l.startedAt < d * day && (l.note?.depth === "f10held" || l.note?.depth === "f12")).length;
     const editing = log.logs.find((l)=>l.id === log.editingId);
     const stat = (label, val)=>lh("span", { style: { marginRight: "18px" } }, `${label}: `, lh("span", { className: "glow-subtle" }, val));
-    return lh(LogFrame, { title: "SESSION LOG" }, lh("div", { style: { color: "#33ff3380", marginBottom: "10px", lineHeight: "1.7" } }, stat("LAST 7 DAYS", within(7)), stat("LAST 30 DAYS", within(30)), stat("F10 HELD (30D)", held(30)), stat("TOTAL", real.length)), log.active ? lh("div", { style: { color: "#ffaa00", marginBottom: "10px" } }, "▸ LOG OPEN — MARK WITH 1-9 DURING THE SESSION, THEN [■ END LOG] TO WRITE THE NOTE.") : lh("div", { style: { color: "#33ff3350", marginBottom: "10px", fontSize: "13px" } }, "▸ PRESS [● LOG] BEFORE YOU LIE DOWN — WORKS WITH APP AUDIO OR AN EXTERNAL TAPE.", lh("br"), "▸ MARKS ARE TIMESTAMPED. AFTERWARD, FILL IN THE NOTE WHILE IT IS FRESH."), editing && lh(LogEditor, { log, entry: editing }), log.logs.length === 0 && lh("div", { style: { color: "#33ff3340" } }, "NO SESSIONS LOGGED YET."), log.logs.map((l)=>{
+    return lh(LogFrame, { title: "SESSION LOG" }, lh("div", { style: { color: "#33ff3380", marginBottom: "10px", lineHeight: "1.7" } }, stat("LAST 7 DAYS", within(7)), stat("LAST 30 DAYS", within(30)), stat("F10 HELD (30D)", held(30)), stat("TOTAL", real.length)), log.active ? lh("div", { style: { color: "#ffaa00", marginBottom: "10px" } }, "▸ LOG OPEN — MARK WITH 1-9 DURING THE SESSION, THEN ■ END LOG TO WRITE THE NOTE.") : lh("div", { style: { color: "#33ff3350", marginBottom: "10px", fontSize: "13px" } }, "▸ PRESS ● LOG BEFORE YOU LIE DOWN — WORKS WITH APP AUDIO OR AN EXTERNAL TAPE.", lh("br"), "▸ MARKS ARE TIMESTAMPED. AFTERWARD, FILL IN THE NOTE WHILE IT IS FRESH."), editing && lh(LogEditor, { log, entry: editing }), log.logs.length === 0 && lh("div", { style: { color: "#33ff3340" } }, "NO SESSIONS LOGGED YET."), log.logs.map((l)=>{
         const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
         const counts = {};
         l.markers.forEach((m)=>counts[m.type] = (counts[m.type] || 0) + 1);
         const summary = Object.entries(counts).map(([t, c])=>`${logMarkerLabel(t)}${c > 1 ? "×" + c : ""}`).join(" · ");
         const d = new Date(l.startedAt);
-        return lh("div", { key: l.id, style: { borderTop: "1px solid #33ff3315", padding: "6px 0" } }, lh("div", { style: { color: "#33ff33", display: "flex", justifyContent: "space-between", flexWrap: "wrap" } }, lh("span", null, `${d.getFullYear()}-${logPad(d.getMonth() + 1)}-${logPad(d.getDate())} ${logPad(d.getHours())}:${logPad(d.getMinutes())} · ${mins}MIN`), lh("span", { style: { color: "#33ff3380" } }, logDepthLabel(l.note?.depth) || "—")), lh("div", { style: { color: "#33ff3360", fontSize: "13px" } }, l.note?.technique || ""), summary && lh("div", { style: { color: "#33ff3350", fontSize: "12px" } }, summary), lh("div", { style: { marginTop: "4px" } }, lh(LogBtn, { label: "[EDIT]", onClick: ()=>log.setEditingId(l.id) }), lh(LogBtn, { label: "[.MD]", onClick: ()=>logDownload(`${logFileStamp(l)}.md`, logToMarkdown(l)) }), lh(LogBtn, { label: "[DELETE]", warn: true, onClick: ()=>{
+        return lh("div", { key: l.id, style: { borderTop: "1px solid #33ff3315", padding: "6px 0" } }, lh("div", { style: { color: "#33ff33", display: "flex", justifyContent: "space-between", flexWrap: "wrap" } }, lh("span", null, `${d.getFullYear()}-${logPad(d.getMonth() + 1)}-${logPad(d.getDate())} ${logPad(d.getHours())}:${logPad(d.getMinutes())} · ${mins}MIN`), lh("span", { style: { color: "#33ff3380" } }, logDepthLabel(l.note?.depth) || "—")), lh("div", { style: { color: "#33ff3360", fontSize: "13px" } }, l.note?.technique || ""), summary && lh("div", { style: { color: "#33ff3350", fontSize: "12px" } }, summary), lh("div", { style: { marginTop: "4px" } }, lh(LogBtn, { label: "EDIT", onClick: ()=>log.setEditingId(l.id) }), lh(LogBtn, { label: ".MD", onClick: ()=>logDownload(`${logFileStamp(l)}.md`, logToMarkdown(l)) }), lh(LogBtn, { label: "DELETE", warn: true, onClick: ()=>{
                 if (window.confirm("Delete this logged session? This cannot be undone.")) log.deleteLog(l.id);
             } })));
-    }), log.logs.length > 0 && lh("div", { style: { borderTop: "1px solid #33ff3315", paddingTop: "8px", marginTop: "4px" } }, lh(LogBtn, { label: "[EXPORT ALL — BACKUP .JSON]", onClick: ()=>logDownload(`consciousness-map-log-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(log.logs, null, 2), "application/json") }), lh("div", { style: { color: "#33ff3340", fontSize: "12px" } }, "LOGS LIVE IN THIS BROWSER ONLY. EXPORT OFTEN — CLEARING SITE DATA ERASES THEM.")));
+    }), log.logs.length > 0 && lh("div", { style: { borderTop: "1px solid #33ff3315", paddingTop: "8px", marginTop: "4px" } }, lh(LogBtn, { label: "EXPORT ALL — BACKUP .JSON", onClick: ()=>logDownload(`consciousness-map-log-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(log.logs, null, 2), "application/json") }), lh("div", { style: { color: "#33ff3340", fontSize: "12px" } }, "LOGS LIVE IN THIS BROWSER ONLY. EXPORT OFTEN — CLEARING SITE DATA ERASES THEM.")));
+}
+/* ═══════════════════════════════════════════════════════════
+   LANTERN-1 CONSOLE — the boot screen's look and voice on the main screen:
+   printouts with dotted leaders instead of boxes, text that burns bright and cools,
+   one calm voice, amber for advisories, and the depth scope as the instrument.
+   ═══════════════════════════════════════════════════════════ */
+// How deep a beat sits on the scope's five rings (F10 outermost ... F27 innermost).
+// Beta and gamma are above the map, so no ring is lit for them.
+const depthRings = (beat)=>beat >= 13 ? 0 : beat >= 8 ? 1 : beat >= 5.5 ? 2 : beat >= 3.5 ? 3 : beat >= 2 ? 4 : 5;
+// A command: no filled block; a glow when pressed and a slab (the boot's cursor) when on
+function Cmd({ label, active, warn, onClick }) {
+    return lh("button", {
+        className: "cmd" + (active ? " on" : "") + (warn ? " warn" : ""),
+        onClick: ()=>{
+            playClick();
+            onClick();
+        }
+    }, label);
+}
+// A titled section: tracked caps over a double rule, in place of a drawn box
+function Section({ title, children }) {
+    return lh("section", { style: { margin: "14px 0 12px" } }, lh("div", { className: "sect-title" }, title), lh("div", { className: "sect-rule" }), lh("div", { style: { marginTop: "8px" } }, children));
+}
+// A printout line you can touch: label, dotted leader, value, and a description when it's chosen
+function PickRow({ label, right, desc, active, onClick }) {
+    return lh("button", {
+        className: "pick" + (active ? " on" : ""),
+        onClick: ()=>{
+            playClick();
+            onClick();
+        }
+    }, lh("span", { className: "pk-line" }, lh("span", { className: "pk-label" }, label), lh("span", { className: "pk-leader" }), lh("span", { className: "pk-right" }, right)), desc ? lh("span", { className: "pk-desc" }, desc) : null);
+}
+// A readout line whose value flares and cools when it changes, like freshly written phosphor
+function LiveRow({ label, value, steady, wrap }) {
+    const [flash, setFlash] = _react.useState(false);
+    const prev = _react.useRef(value);
+    _react.useEffect(()=>{
+        if (prev.current === value) return;
+        prev.current = value;
+        if (steady) return;
+        setFlash(true);
+        const id = setTimeout(()=>setFlash(false), 650);
+        return ()=>clearTimeout(id);
+    }, [
+        value,
+        steady
+    ]);
+    return lh(BootRow, { label, leader: true, status: value, flash, wrapStatus: wrap });
+}
+function Readout({ rows }) {
+    return lh("div", {
+        style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", columnGap: "26px", margin: "2px 0 8px", fontSize: "0.95em" }
+    }, rows.map((r)=>lh("div", { key: r.label, style: r.wide ? { gridColumn: "1 / -1" } : undefined }, lh(LiveRow, { label: r.label, value: r.value, steady: r.steady, wrap: r.wide }))));
+}
+// The nameplate, with the depth scope as a live gauge: rings light as the tone goes deeper
+function Nameplate({ lit, scope }) {
+    return lh("div", {
+        style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px" }
+    }, lh("div", { style: { minWidth: 0 } }, lh("div", { className: "plate-title" }, "LANTERN-1"), lh("div", { className: "plate-sub" }, "THRESHOLD GUIDANCE SYSTEM"), lh("div", { className: "plate-dim" }, "INNER SURVEY DIVISION · REV 4.7.2")), scope ? lh(DepthScope, { lit, awake: true, size: "clamp(72px, 20vw, 96px)", res: 180 }) : null);
+}
+// The machine's one line, written out when it changes: bright while typing, then it cools
+function VoiceLine({ text, src }) {
+    const [shown, setShown] = _react.useState("");
+    const [typing, setTyping] = _react.useState(true);
+    _react.useEffect(()=>{
+        const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        if (reduce) {
+            setShown(text);
+            setTyping(false);
+            return;
+        }
+        let i = 0;
+        setShown("");
+        setTyping(true);
+        const id = setInterval(()=>{
+            i++;
+            setShown(text.slice(0, i));
+            if (i >= text.length) {
+                clearInterval(id);
+                setTyping(false);
+            }
+        }, 28);
+        return ()=>clearInterval(id);
+    }, [
+        text
+    ]);
+    return lh("div", { style: { margin: "10px 0 12px" } }, lh("div", {
+        style: {
+            fontSize: "clamp(13px, 3.9vw, 17px)",
+            letterSpacing: "0.07em",
+            lineHeight: 1.5,
+            minHeight: "1.5em",
+            color: typing ? "#f0fff1" : "#c4ffc8",
+            textShadow: typing ? "0 0 8px #33ff33, 0 0 22px rgba(51,255,51,0.75)" : "0 0 6px rgba(51,255,51,0.55)",
+            transition: typing ? "none" : "color 1.2s ease-out, text-shadow 1.2s ease-out"
+        }
+    }, lh("span", { style: { opacity: 0.5 } }, "> "), shown, typing ? lh("span", { className: "boot-caret" }) : null), lh("div", {
+        style: {
+            fontSize: "0.78em",
+            letterSpacing: "0.14em",
+            margin: "2px 0 0 1.4em",
+            minHeight: "1.5em",
+            color: "rgba(51,255,51,0.6)",
+            opacity: typing ? 0 : 1,
+            transition: typing ? "none" : "opacity 1.4s ease-out"
+        }
+    }, src ? `\u2014 ${src}` : "\u00A0"));
+}
+// A slider with its label and value printed above it
+function SliderRow({ label, valueText, min, max, step, value, onChange, minText, maxText, hint, note }) {
+    return lh("div", { style: { margin: "10px 0 14px" } }, lh(BootRow, { label, leader: true, status: valueText }), lh("input", {
+        type: "range", min, max, step, value, onChange,
+        style: { width: "100%", margin: "8px 0 4px", display: "block" }
+    }), lh("div", {
+        style: { display: "flex", justifyContent: "space-between", fontSize: "11px", letterSpacing: "0.1em", color: "rgba(51,255,51,0.35)" }
+    }, lh("span", null, minText), lh("span", null, maxText)), hint ? lh("div", { className: "guide", style: { marginTop: "4px", fontSize: "0.85em" } }, hint) : null, note ? lh("div", { className: "advisory", style: { marginTop: "4px" } }, note) : null);
 }
 function Terminal() {
     const eng = (0, _react.useRef)(new AudioEngine());
@@ -16841,6 +17222,13 @@ function Terminal() {
         om: omOn
     });
     const wake = useWakeLock(playing || log.active || dim);
+    // Once something has played, the voice greets the end of it differently from a fresh start
+    const [hasPlayed, setHasPlayed] = (0, _react.useState)(false);
+    (0, _react.useEffect)(()=>{
+        if (playing) setHasPlayed(true);
+    }, [
+        playing
+    ]);
     const startAudio = (0, _react.useCallback)((b, c)=>{
         const e = eng.current;
         if (fadeRef.current) clearTimeout(fadeRef.current);
@@ -16952,1028 +17340,185 @@ function Terminal() {
     ]);
     const totalRemaining = sessionPreset ? sessionPreset.phases.slice(phaseIdx).reduce((s, p, i)=>s + (i === 0 ? p.minutes * 60 - phaseElapsed : p.minutes * 60), 0) : 0;
     const fmt = (s)=>`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-    const Box = ({ title, children })=>/*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-            className: "mb-3",
-            children: [
-                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                    style: {
-                        color: "#33ff3360",
-                        fontSize: "14px"
-                    },
-                    children: [
-                        "\u2554",
-                        "\u2550".repeat(title.length + 2),
-                        "\u2557"
-                    ]
-                }),
-                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                    style: {
-                        color: "#33ff3360",
-                        fontSize: "14px"
-                    },
-                    children: [
-                        "\u2551 ",
-                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                            style: {
-                                color: "#33ff33"
-                            },
-                            className: "glow-subtle",
-                            children: title
-                        }),
-                        " \u2551"
-                    ]
-                }),
-                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                    style: {
-                        color: "#33ff3360",
-                        fontSize: "14px"
-                    },
-                    children: [
-                        "\u255A",
-                        "\u2550".repeat(title.length + 2),
-                        "\u255D"
-                    ]
-                }),
-                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                    className: "mt-1 ml-1",
-                    children: children
-                })
-            ]
-        });
-    const Btn = ({ label, active, warn, onClick })=>/*#__PURE__*/ (0, _jsxRuntime.jsx)("button", {
-            onClick: ()=>{
-                playClick();
-                onClick();
-            },
-            className: `transition-all mr-2 mb-1 px-2 py-0.5${active ? " active-pulse" : ""}`,
-            style: {
-                fontSize: "14px",
-                color: warn ? "#ff4444" : active ? "#0a0a0a" : "#33ff33",
-                background: active ? "#33ff33" : "transparent",
-                border: `1px solid ${warn ? "#ff444460" : active ? "#33ff3390" : "#33ff3340"}`,
-                textShadow: active ? "none" : warn ? "0 0 5px #ff4444" : "0 0 5px #33ff3360",
-                cursor: "pointer"
-            },
-            children: label
-        });
-    return /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-        className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker",
-        style: {
-            background: "#0a0a0a"
+    const bandInfo = BANDS[band];
+    // The machine speaks in sayings and directions from the traditions, picked for what is happening
+    // (a drum-like pulse, the band, a descent logged, a return). At rest it says the line the app
+    // has always opened with.
+    const voiceTag = playing ? (mode !== "binaural" ? "dr" : band === "alpha" ? "a" : band === "theta" ? "th" : band === "delta" ? "de" : "fo") : log.active ? "lg" : hasPlayed ? "rt" : "idle";
+    const lastSaid = (0, _react.useRef)("");
+    const saying = (0, _react.useMemo)(()=>{
+        const creed = { text: "YOU ARE MORE THAN YOUR PHYSICAL BODY.", src: "" };
+        if (voiceTag === "idle") return creed;
+        const s = pickSaying(voiceTag, lastSaid.current);
+        lastSaid.current = s ? s.text : "";
+        return s || creed;
+    }, [
+        voiceTag,
+        sessionOn ? phaseIdx : -1
+    ]);
+    const rows = [
+        { label: "STATE", value: playing ? "ACTIVE" : "STANDBY" },
+        { label: "BEAT", value: `${beat.toFixed(1)} HZ` },
+        { label: "BAND", value: bandInfo.label },
+        { label: "CARRIER", value: `${carrier} HZ` },
+        { label: "TONE", value: mode === "both" ? "BOTH" : mode.toUpperCase() },
+        { label: "VOLUME", value: `${volume} %` }
+    ];
+    if (activeName && playing) rows.push({ label: "TARGET", value: activeName, wide: true });
+    if (sessionOn && sessionPreset) rows.push({ label: "REMAINING", value: fmt(totalRemaining), wide: true, steady: true });
+    // Warnings are amber, as at boot
+    const alerts = [];
+    if (playing && audioState !== "running") alerts.push(lh("button", { key: "a1", className: "advisory", onClick: ()=>eng.current.resumeOutput() }, audioState === "paused" ? "WARNING: AUDIO PAUSED — TAP TO RESUME" : "WARNING: AUDIO SUSPENDED BY ANDROID — TAP TO RESUME"));
+    if ((playing || log.active) && (!wake.supported || wake.failed)) alerts.push(lh("div", { key: "a2", className: "advisory" }, "WARNING: SCREEN WAKE LOCK UNAVAILABLE (NEEDS HTTPS; BATTERY SAVER BLOCKS IT) — SET SCREEN TIMEOUT TO MAX"));
+    if (playing && beat > BINAURAL_MAX_BEAT && mode === "binaural") alerts.push(lh("div", { key: "a3", className: "advisory" }, `WARNING: BINAURAL BEATS ABOVE ${BINAURAL_MAX_BEAT} HZ ARE IMPERCEPTIBLE (OSTER 1973) — USE ISOCHRONIC OR BOTH FOR GAMMA`));
+    const guide = (k, v)=>lh("div", { className: "guide", key: k }, lh("span", { className: "gk" }, k), " — ", v);
+    const tabs = [
+        ["main", "MAIN"],
+        ["focus", "FOCUS LEVELS"],
+        ["brainwave", "BRAINWAVES"],
+        ["sessions", "SESSIONS"],
+        ["log", "LOG"],
+        ["custom", "CUSTOM"]
+    ];
+    return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: saying.text, src: saying.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
+        beat,
+        playing,
+        width: IS_MOBILE ? Math.min(38, Math.floor((window.innerWidth - 40) / 9)) : 58
+    })), !dim && lh("div", { style: { marginBottom: "12px" } }, lh("div", { className: "tiny-label" }, "FIELD"), lh(ParticleVisualizer, { beat, carrier, volume, playing, mode, ambient, engine: eng })), sessionOn && sessionPreset && lh("div", { style: { marginBottom: "12px" } }, lh("div", { className: "tiny-label" }, `SESSION · ${sessionPreset.name} · PHASE ${phaseIdx + 1}/${sessionPreset.phases.length} · ${sessionPreset.phases[phaseIdx]?.label}`), lh(PhaseBar, { preset: sessionPreset, phaseIdx, elapsed: phaseElapsed })), lh("div", { style: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "4px 6px", margin: "10px 0" } }, !playing ? lh(Cmd, { label: "▶ START", onClick: ()=>startAudio(beat, carrier) }) : lh(Cmd, { label: "■ STOP", warn: true, onClick: stopGently }), sessionOn && lh(Cmd, { label: "END SESSION", warn: true, onClick: stopGently }), !log.active ? lh(Cmd, { label: "● LOG", onClick: log.startLog }) : lh(Cmd, {
+        label: "■ END LOG",
+        warn: true,
+        onClick: ()=>{
+            log.endLog();
+            setView("log");
+        }
+    }), lh(Cmd, { label: "◐ DIM", onClick: ()=>setDim(true) }), lh("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginLeft: "6px" } }, lh("span", { className: "ctl-label", style: { margin: 0 } }, "VOL"), lh("input", {
+        type: "range",
+        min: "0",
+        max: "100",
+        value: volume,
+        onChange: (e)=>{
+            const v = Number(e.target.value);
+            setVolume(v);
+            eng.current.setVolume(v / 100);
         },
-        children: [
-            !dim && /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                className: "scanlines"
+        style: { width: "96px" }
+    }), lh("span", { className: "ctl-val" }, `${volume}%`))), log.active && lh(MarkerPad, { log }), lh("div", { className: "ctl-row" }, lh("div", { className: "ctl-group" }, lh("span", { className: "ctl-label" }, "TONE"), [
+        "binaural",
+        "isochronic",
+        "both"
+    ].map((m)=>lh(Cmd, {
+            key: m,
+            label: m.toUpperCase(),
+            active: mode === m,
+            onClick: ()=>{
+                setMode(m);
+                if (playing) {
+                    eng.current.stop();
+                    eng.current.start(beat, carrier, m, volume / 100);
+                    eng.current.setAmbient(ambient);
+                    eng.current.setOm(omOn);
+                }
+            }
+        }))), lh("div", { className: "ctl-group" }, lh("span", { className: "ctl-label" }, "AMBIENT"), [
+        "none",
+        "pink",
+        "brown",
+        "rain",
+        "ocean"
+    ].map((a)=>lh(Cmd, {
+            key: a,
+            label: a === "none" ? "OFF" : a.toUpperCase(),
+            active: ambient === a,
+            onClick: ()=>{
+                setAmbient(a);
+                eng.current.setAmbient(a);
+            }
+        }))), lh("div", { className: "ctl-group" }, lh("span", { className: "ctl-label" }, "OM"), lh(Cmd, {
+        label: omOn ? "ON" : "OFF",
+        active: omOn,
+        onClick: ()=>{
+            const next = !omOn;
+            setOmOn(next);
+            eng.current.setOm(next);
+        }
+    }))), lh("div", { style: { display: "flex", flexWrap: "wrap", gap: "0", margin: "6px 0 4px", paddingTop: "10px", borderTop: "1px solid rgba(51,255,51,0.15)" } }, tabs.map(([v, label])=>lh(Cmd, { key: v, label, active: view === v, onClick: ()=>setView(v) }))), view === "main" && lh(Section, { title: "ORIENTATION" }, guide("FOCUS LEVELS", "MONROE-MAPPED STATES, F10 TO F27"), guide("BRAINWAVES", "STANDARD BANDS, DELTA TO GAMMA"), guide("SESSIONS", "GUIDED DESCENTS, PHASE BY PHASE"), guide("LOG", "MARK WHAT YOU NOTICE; KEEP A FIELD NOTE"), guide("CUSTOM", "TUNE BEAT AND CARRIER BY HAND"), guide("DIM", "BLACK OUT THE SCREEN; MARKS STAY TAPPABLE"), guide("VOICE", "SAYINGS AND DIRECTIONS FROM DREAM YOGA, SHAMANIC JOURNEYING AND OTHER TRADITIONS, EACH CREDITED"), lh("div", { className: "advisory", style: { marginTop: "12px" } }, "ADVISORY: BEFORE YOU LIE DOWN — DO NOT DISTURB ON · HEADPHONE EQ FLAT, BASS BOOST OFF · ANDROID MONO AUDIO OFF"), lh("div", { className: "advisory" }, "NOTE: BINAURAL BEATS ARE IMPERCEPTIBLE ABOVE ~30 HZ. FOR GAMMA, USE ISOCHRONIC OR BOTH."), lh("div", { className: "advisory" }, "NOTE: CARRIERS ARE LOW, SOFT PRESETS. IN CUSTOM, ~400 HZ MAY MAKE THE BEAT EASIER TO HEAR.")), view === "focus" && lh(Section, { title: "SOUNDING DEPTH LEVELS" }, lh("div", { className: "guide", style: { marginBottom: "6px" } }, "CHOOSE A LEVEL. I WILL TAKE YOU THERE."), FOCUS.map((fl)=>{
+        const on = activeName.startsWith(fl.name) && playing;
+        return lh(PickRow, {
+            key: fl.id,
+            label: `${fl.name.replace("FOCUS ", "F")}  ${fl.sub}`,
+            right: `${fl.beat} HZ · ${fl.band.toUpperCase()}`,
+            desc: on ? fl.desc : null,
+            active: on,
+            onClick: ()=>{
+                setActiveName(fl.name + " — " + fl.sub);
+                startAudio(fl.beat, fl.carrier);
+            }
+        });
+    })), view === "brainwave" && lh(Section, { title: "BRAINWAVE BANDS" }, lh("div", { className: "guide", style: { marginBottom: "6px" } }, "CHOOSE A BAND. I WILL HOLD IT."), Object.entries(BANDS).map(([key, b])=>{
+        const center = (b.range[0] + b.range[1]) / 2;
+        const on = band === key && playing;
+        return [
+            lh(PickRow, {
+                key,
+                label: b.label,
+                right: `${b.range[0]}–${b.range[1]} HZ`,
+                desc: on ? b.desc : null,
+                active: on,
+                onClick: ()=>{
+                    setActiveName(b.label + " BAND");
+                    startAudio(center, b.carrier);
+                }
             }),
-            !dim && /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                className: "screen-static"
-            }),
-            dim && /*#__PURE__*/ (0, _jsxRuntime.jsx)(DimOverlay, {
-                log: log,
-                onExit: ()=>setDim(false)
-            }),
-            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                className: "relative z-10 max-w-3xl mx-auto px-6 py-5",
-                style: {
-                    fontSize: "14px"
-                },
-                children: [
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-4",
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("pre", {
-                                className: "glow",
-                                style: {
-                                    color: "#33ff33",
-                                    fontSize: "13px",
-                                    lineHeight: "1.15",
-                                    margin: 0
-                                },
-                                children: `  ___  ___  ___ ___ _  ___      _____   _____
- | _ )| _ \\/ _ |_ _| \\| \\ \\    / / _ \\ / / __|
- | _ \\|   / (_| || || .  |\\ \\/\\/ / _  / / \\__ \\
- |___/|_|_\\\\__,_|___|_|\\_| \\_/\\_/_/ |_/_/  |___/
-  ___ _  _ _____ ___  _   ___ _  _ __  __ ___ _  _ _____
- | __| \\| |_   _| _ \\/ \\ |_ _| \\| |  \\/  | __| \\| |_   _|
- | _|| .  | | | |   / _ \\ | || .  | |\\/| | _|| .  | | |
- |___|_|\\_| |_| |_|_/_/ \\_|___|_|\\_|_|  |_|___|_|\\_| |_|`
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                className: "mt-2",
-                                style: {
-                                    color: "#33ff3360",
-                                    fontSize: "13px"
-                                },
-                                children: "CONSCIOUSNESS MAP PROJECT \u2014 NEURAL ENTRAINMENT SYSTEM v4.7"
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                className: "mt-3 pulse-text",
-                                style: {
-                                    color: "#33ff33",
-                                    fontSize: "14px",
-                                    letterSpacing: "0.15em"
-                                },
-                                children: '"YOU ARE MORE THAN YOUR PHYSICAL BODY"'
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-3 py-2",
-                        style: {
-                            borderTop: "1px solid #33ff3325",
-                            borderBottom: "1px solid #33ff3325"
-                        },
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "flex flex-wrap gap-x-6 gap-y-1",
-                                style: {
-                                    fontSize: "14px"
-                                },
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        children: [
-                                            "STATUS: ",
-                                            playing ? /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                className: "glow",
-                                                style: {
-                                                    color: "#33ff33"
-                                                },
-                                                children: "\u25A0 ACTIVE"
-                                            }) : /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                style: {
-                                                    color: "#33ff3350"
-                                                },
-                                                children: "\u25A1 IDLE"
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        children: [
-                                            "BEAT: ",
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                className: "glow-subtle",
-                                                children: [
-                                                    beat.toFixed(1),
-                                                    "HZ"
-                                                ]
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        children: [
-                                            "CARRIER: ",
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                style: {
-                                                    color: "#33ff3399"
-                                                },
-                                                children: [
-                                                    carrier,
-                                                    "HZ"
-                                                ]
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        children: [
-                                            "BAND: ",
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                className: "glow-subtle",
-                                                children: BANDS[band].label
-                                            })
-                                        ]
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        children: [
-                                            "MODE: ",
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                style: {
-                                                    color: "#33ff3399"
-                                                },
-                                                children: mode.toUpperCase()
-                                            })
-                                        ]
-                                    })
-                                ]
-                            }),
-                            activeName && playing && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "mt-1",
-                                style: {
-                                    color: "#33ff3370"
-                                },
-                                children: [
-                                    "TARGET: ",
-                                    activeName,
-                                    sessionOn && sessionPreset && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        className: "ml-4",
-                                        children: [
-                                            "REMAINING: ",
-                                            fmt(totalRemaining)
-                                        ]
-                                    })
-                                ]
-                            }),
-                            playing && audioState !== "running" && /*#__PURE__*/ (0, _jsxRuntime.jsx)("button", {
-                                onClick: ()=>eng.current.resumeOutput(),
-                                className: "mt-1 block",
-                                style: {
-                                    color: "#ffaa00",
-                                    fontSize: "13px"
-                                },
-                                children: audioState === "paused" ? "⚠ AUDIO PAUSED — TAP TO RESUME" : "⚠ AUDIO SUSPENDED BY ANDROID — TAP TO RESUME"
-                            }),
-                            (playing || log.active) && (!wake.supported || wake.failed) && /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                className: "mt-1",
-                                style: {
-                                    color: "#ffaa00",
-                                    fontSize: "13px"
-                                },
-                                children: "⚠ SCREEN WAKE LOCK UNAVAILABLE (NEEDS HTTPS; BATTERY SAVER BLOCKS IT) — SET SCREEN TIMEOUT TO MAX"
-                            }),
-                            playing && beat > BINAURAL_MAX_BEAT && mode === "binaural" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "mt-1",
-                                style: {
-                                    color: "#ffaa00",
-                                    fontSize: "13px"
-                                },
-                                children: [
-                                    "\u26A0 BINAURAL BEATS >",
-                                    BINAURAL_MAX_BEAT,
-                                    "HZ ARE IMPERCEPTIBLE (OSTER 1973) \u2014 USE ISOCHRONIC OR BOTH MODE FOR GAMMA"
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-3",
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                style: {
-                                    color: "#33ff3340",
-                                    fontSize: "12px",
-                                    marginBottom: "2px"
-                                },
-                                children: "\u2500\u2500 WAVEFORM \u2500\u2500"
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)(AsciiWaveform, {
-                                beat: beat,
-                                playing: playing,
-                                width: IS_MOBILE ? Math.min(38, Math.floor((window.innerWidth - 40) / 9)) : 58
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-3",
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                style: {
-                                    color: "#33ff3340",
-                                    fontSize: "12px",
-                                    marginBottom: "4px"
-                                },
-                                children: "\u2500\u2500 FIELD VISUALIZER \u2500\u2500"
-                            }),
-                            !dim && /*#__PURE__*/ (0, _jsxRuntime.jsx)(ParticleVisualizer, {
-                                beat: beat,
-                                carrier: carrier,
-                                volume: volume,
-                                playing: playing,
-                                mode: mode,
-                                ambient: ambient,
-                                engine: eng
-                            })
-                        ]
-                    }),
-                    sessionOn && sessionPreset && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-3",
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                style: {
-                                    color: "#33ff3340",
-                                    fontSize: "12px",
-                                    marginBottom: "2px"
-                                },
-                                children: [
-                                    "\u2500\u2500 SESSION: ",
-                                    sessionPreset.name,
-                                    " \u2014 PHASE ",
-                                    phaseIdx + 1,
-                                    "/",
-                                    sessionPreset.phases.length,
-                                    ": ",
-                                    sessionPreset.phases[phaseIdx]?.label,
-                                    " \u2500\u2500"
-                                ]
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)(PhaseBar, {
-                                preset: sessionPreset,
-                                phaseIdx: phaseIdx,
-                                elapsed: phaseElapsed
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-4 flex flex-wrap items-center gap-x-4 gap-y-2",
-                        children: [
-                            !playing ? /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[\u25B6 START]",
-                                onClick: ()=>startAudio(beat, carrier)
-                            }) : /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[\u25A0 STOP]",
-                                warn: true,
-                                onClick: stopGently
-                            }),
-                            sessionOn && /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[END SESSION]",
-                                warn: true,
-                                onClick: stopGently
-                            }),
-                            !log.active ? /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[● LOG]",
-                                onClick: log.startLog
-                            }) : /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[■ END LOG]",
-                                warn: true,
-                                onClick: ()=>{
-                                    log.endLog();
-                                    setView("log");
-                                }
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                label: "[◐ DIM]",
-                                onClick: ()=>setDim(true)
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "flex items-center gap-2",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                        style: {
-                                            color: "#33ff3360"
-                                        },
-                                        children: "VOL:"
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("input", {
-                                        type: "range",
-                                        min: "0",
-                                        max: "100",
-                                        value: volume,
-                                        onChange: (e)=>{
-                                            const v = Number(e.target.value);
-                                            setVolume(v);
-                                            eng.current.setVolume(v / 100);
-                                        },
-                                        className: "w-24",
-                                        style: {
-                                            color: "#33ff33"
-                                        }
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                        style: {
-                                            color: "#33ff3380"
-                                        },
-                                        children: [
-                                            volume,
-                                            "%"
-                                        ]
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    log.active && /*#__PURE__*/ (0, _jsxRuntime.jsx)(MarkerPad, {
-                        log: log
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mb-4 flex flex-wrap gap-x-6 gap-y-2",
-                        children: [
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "flex items-center gap-1",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                        style: {
-                                            color: "#33ff3360",
-                                            fontSize: "13px"
-                                        },
-                                        children: "TONE:"
-                                    }),
-                                    [
-                                        "binaural",
-                                        "isochronic",
-                                        "both"
-                                    ].map((m)=>/*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                            label: m === "both" ? "B+I" : m.toUpperCase().slice(0, 5),
-                                            active: mode === m,
-                                            onClick: ()=>{
-                                                setMode(m);
-                                                if (playing) {
-                                                    eng.current.stop();
-                                                    eng.current.start(beat, carrier, m, volume / 100);
-                                                    eng.current.setAmbient(ambient);
-                                                    eng.current.setOm(omOn);
-                                                }
-                                            }
-                                        }, m))
-                                ]
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "flex items-center gap-1",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                        style: {
-                                            color: "#33ff3360",
-                                            fontSize: "13px"
-                                        },
-                                        children: "AMBIENT:"
-                                    }),
-                                    [
-                                        "none",
-                                        "pink",
-                                        "brown",
-                                        "rain",
-                                        "ocean"
-                                    ].map((a)=>/*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                            label: a === "none" ? "OFF" : a.toUpperCase(),
-                                            active: ambient === a,
-                                            onClick: ()=>{
-                                                setAmbient(a);
-                                                eng.current.setAmbient(a);
-                                            }
-                                        }, a))
-                                ]
-                            }),
-                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                className: "flex items-center gap-1",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                        style: {
-                                            color: "#33ff3360",
-                                            fontSize: "13px"
-                                        },
-                                        children: "OM:"
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                        label: omOn ? "ON" : "OFF",
-                                        active: omOn,
-                                        onClick: ()=>{
-                                            const next = !omOn;
-                                            setOmOn(next);
-                                            eng.current.setOm(next);
-                                        }
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                        className: "mb-3",
-                        style: {
-                            borderTop: "1px solid #33ff3320",
-                            paddingTop: "8px"
-                        },
-                        children: /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                            className: "flex gap-1 flex-wrap",
-                            children: [
-                                [
-                                    "main",
-                                    "MAIN"
-                                ],
-                                [
-                                    "focus",
-                                    "FOCUS LEVELS"
-                                ],
-                                [
-                                    "brainwave",
-                                    "BRAINWAVES"
-                                ],
-                                [
-                                    "sessions",
-                                    "SESSIONS"
-                                ],
-                                [
-                                    "log",
-                                    "LOG"
-                                ],
-                                [
-                                    "custom",
-                                    "CUSTOM"
-                                ]
-                            ].map(([v, label])=>/*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                    label: `[${label}]`,
-                                    active: view === v,
-                                    onClick: ()=>setView(v)
-                                }, v))
-                        })
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                        className: "mt-2",
-                        children: [
-                            view === "main" && /*#__PURE__*/ (0, _jsxRuntime.jsx)(Box, {
-                                title: "SYSTEM OVERVIEW",
-                                children: /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                    style: {
-                                        color: "#33ff3380",
-                                        lineHeight: "1.7"
-                                    },
-                                    children: [
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "BRAINWAVE ENTRAINMENT SYSTEM"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "CONSCIOUSNESS MAP PROJECT \u2014 2026"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            children: "THIS SYSTEM GENERATES BINAURAL BEATS AND ISOCHRONIC"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "TONES TO ENTRAIN BRAINWAVE ACTIVITY TOWARD TARGETED"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "STATES OF CONSCIOUSNESS."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            children: "MAPPED TO THE MONROE INSTITUTE FOCUS LEVEL FRAMEWORK"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "AND STANDARD BRAINWAVE FREQUENCY BANDS."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            children: "CARRIER TONES ARE LOW, SOFT PRESETS PER BAND."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            children: "IN [CUSTOM], A HIGHER CARRIER (~400HZ) MAY MAKE THE BEAT EASIER TO HEAR."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [FOCUS LEVELS] FOR GATEWAY-MAPPED STATES"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [BRAINWAVES] FOR STANDARD BAND SELECTION"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [SESSIONS] FOR AUTOMATED MULTI-PHASE PROTOCOLS"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [CUSTOM] FOR MANUAL FREQUENCY CONTROL"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [\u25CF LOG] TO MARK AND RECORD A SESSION (APP OR EXTERNAL TAPE)"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#ffaa00"
-                                            },
-                                            children: "\u25B8 USE [\u25D0 DIM] TO BLACK OUT THE SCREEN (MARKS STAY TAPPABLE)"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            style: {
-                                                color: "#33ff3350",
-                                                fontSize: "13px"
-                                            },
-                                            children: "BEFORE YOU LIE DOWN: DO NOT DISTURB ON \u00B7 HEADPHONE EQ FLAT / BASS BOOST OFF \u00B7 ANDROID MONO AUDIO OFF"
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-2",
-                                            style: {
-                                                color: "#33ff3350",
-                                                fontSize: "13px"
-                                            },
-                                            children: "NOTE: BINAURAL BEATS ARE IMPERCEPTIBLE ABOVE ~30HZ."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#33ff3350",
-                                                fontSize: "13px"
-                                            },
-                                            children: "FOR GAMMA ENTRAINMENT, USE ISOCHRONIC OR BOTH MODE."
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            className: "mt-3",
-                                            style: {
-                                                color: "#33ff3340"
-                                            },
-                                            children: "\u2550".repeat(50)
-                                        }),
-                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                            style: {
-                                                color: "#33ff3350"
-                                            },
-                                            children: '"CONSCIOUSNESS PERSISTS BEYOND THE PHYSICAL."'
-                                        })
-                                    ]
-                                })
-                            }),
-                            view === "focus" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)(Box, {
-                                title: "MONROE FOCUS LEVELS",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                        style: {
-                                            color: "#33ff3350",
-                                            marginBottom: "8px"
-                                        },
-                                        children: "SELECT TARGET STATE:"
-                                    }),
-                                    FOCUS.map((fl)=>/*#__PURE__*/ (0, _jsxRuntime.jsxs)("button", {
-                                            onClick: ()=>{
-                                                playClick();
-                                                setActiveName(fl.name + " \u2014 " + fl.sub);
-                                                startAudio(fl.beat, fl.carrier);
-                                            },
-                                            className: `block w-full text-left mb-1 px-2 py-1.5 transition-all${activeName.startsWith(fl.name) && playing ? " active-pulse" : ""}`,
-                                            style: {
-                                                border: `1px solid ${activeName.startsWith(fl.name) && playing ? "#33ff3360" : "#33ff3315"}`,
-                                                background: activeName.startsWith(fl.name) && playing ? "#33ff3308" : "transparent",
-                                                cursor: "pointer"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                    className: "flex justify-between",
-                                                    children: [
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                            className: "glow-subtle",
-                                                            style: {
-                                                                color: "#33ff33"
-                                                            },
-                                                            children: fl.name
-                                                        }),
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                            style: {
-                                                                color: "#33ff3360"
-                                                            },
-                                                            children: [
-                                                                fl.beat,
-                                                                "HZ / ",
-                                                                fl.band.toUpperCase()
-                                                            ]
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    style: {
-                                                        color: "#33ff3370"
-                                                    },
-                                                    children: fl.sub
-                                                }),
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    style: {
-                                                        color: "#33ff3340",
-                                                        fontSize: "13px"
-                                                    },
-                                                    children: fl.desc
-                                                })
-                                            ]
-                                        }, fl.id))
-                                ]
-                            }),
-                            view === "brainwave" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)(Box, {
-                                title: "BRAINWAVE BANDS",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                        style: {
-                                            color: "#33ff3350",
-                                            marginBottom: "8px"
-                                        },
-                                        children: "SELECT ENTRAINMENT TARGET:"
-                                    }),
-                                    Object.entries(BANDS).map(([key, b])=>{
-                                        const center = (b.range[0] + b.range[1]) / 2;
-                                        return /*#__PURE__*/ (0, _jsxRuntime.jsxs)("button", {
-                                            onClick: ()=>{
-                                                playClick();
-                                                setActiveName(b.label + " BAND");
-                                                startAudio(center, b.carrier);
-                                            },
-                                            className: `block w-full text-left mb-1 px-2 py-1.5 transition-all${band === key && playing ? " active-pulse" : ""}`,
-                                            style: {
-                                                border: `1px solid ${band === key && playing ? "#33ff3360" : "#33ff3315"}`,
-                                                background: band === key && playing ? "#33ff3308" : "transparent",
-                                                cursor: "pointer"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                    className: "flex justify-between",
-                                                    children: [
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                            className: "glow-subtle",
-                                                            style: {
-                                                                color: "#33ff33"
-                                                            },
-                                                            children: b.label
-                                                        }),
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                            style: {
-                                                                color: "#33ff3360"
-                                                            },
-                                                            children: [
-                                                                b.range[0],
-                                                                "\u2013",
-                                                                b.range[1],
-                                                                "HZ / BEAT: ",
-                                                                center.toFixed(1),
-                                                                "HZ / CARRIER: ",
-                                                                b.carrier,
-                                                                "HZ"
-                                                            ]
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    style: {
-                                                        color: "#33ff3340",
-                                                        fontSize: "13px"
-                                                    },
-                                                    children: b.desc
-                                                }),
-                                                key === "gamma" && /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    style: {
-                                                        color: "#ffaa0080",
-                                                        fontSize: "12px"
-                                                    },
-                                                    children: "ISOCHRONIC RECOMMENDED \u2014 BINAURAL IMPERCEPTIBLE ABOVE 30HZ"
-                                                })
-                                            ]
-                                        }, key);
-                                    })
-                                ]
-                            }),
-                            view === "sessions" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)(Box, {
-                                title: "SESSION PROTOCOLS",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                        style: {
-                                            color: "#33ff3350",
-                                            marginBottom: "8px"
-                                        },
-                                        children: "SELECT AUTOMATED PROTOCOL:"
-                                    }),
-                                    PRESETS.map((preset)=>{
-                                        const total = preset.phases.reduce((s, p)=>s + p.minutes, 0);
-                                        const isActive = sessionOn && sessionPreset?.id === preset.id;
-                                        return /*#__PURE__*/ (0, _jsxRuntime.jsxs)("button", {
-                                            onClick: ()=>{
-                                                playClick();
-                                                isActive ? stopGently() : startSession(preset);
-                                            },
-                                            className: `block w-full text-left mb-1 px-2 py-1.5 transition-all${isActive ? " active-pulse" : ""}`,
-                                            style: {
-                                                border: `1px solid ${isActive ? "#33ff3360" : "#33ff3315"}`,
-                                                background: isActive ? "#33ff3308" : "transparent",
-                                                cursor: "pointer"
-                                            },
-                                            children: [
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                    className: "flex justify-between",
-                                                    children: [
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                            className: "glow-subtle",
-                                                            style: {
-                                                                color: "#33ff33"
-                                                            },
-                                                            children: preset.name
-                                                        }),
-                                                        /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                            style: {
-                                                                color: "#33ff3360"
-                                                            },
-                                                            children: [
-                                                                total,
-                                                                "MIN / ",
-                                                                preset.phases.length,
-                                                                " PHASES"
-                                                            ]
-                                                        })
-                                                    ]
-                                                }),
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    style: {
-                                                        color: "#33ff3340",
-                                                        fontSize: "13px"
-                                                    },
-                                                    children: preset.desc
-                                                }),
-                                                /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                                    className: "mt-1 flex flex-wrap gap-1",
-                                                    children: preset.phases.map((p, i)=>/*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                            style: {
-                                                                color: isActive && i === phaseIdx ? "#33ff33" : "#33ff3340",
-                                                                fontSize: "12px"
-                                                            },
-                                                            children: [
-                                                                "[",
-                                                                p.label,
-                                                                ":",
-                                                                p.minutes,
-                                                                "M]"
-                                                            ]
-                                                        }, i))
-                                                })
-                                            ]
-                                        }, preset.id);
-                                    })
-                                ]
-                            }),
-                            view === "custom" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)(Box, {
-                                title: "CUSTOM FREQUENCY",
-                                children: [
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                                        style: {
-                                            color: "#33ff3350",
-                                            marginBottom: "12px"
-                                        },
-                                        children: "MANUAL FREQUENCY CONTROL:"
-                                    }),
-                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                        className: "flex flex-col gap-4",
-                                        children: [
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                children: [
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        className: "flex justify-between mb-1",
-                                                        children: [
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                style: {
-                                                                    color: "#33ff3370"
-                                                                },
-                                                                children: "BEAT FREQUENCY"
-                                                            }),
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                                className: "glow-subtle",
-                                                                children: [
-                                                                    beat.toFixed(1),
-                                                                    " HZ (",
-                                                                    BANDS[getBand(beat)].label,
-                                                                    ")"
-                                                                ]
-                                                            })
-                                                        ]
-                                                    }),
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("input", {
-                                                        type: "range",
-                                                        min: "0.5",
-                                                        max: "44",
-                                                        step: "0.5",
-                                                        value: beat,
-                                                        className: "w-full",
-                                                        style: {
-                                                            color: "#33ff33"
-                                                        },
-                                                        onChange: (e)=>{
-                                                            const b = Number(e.target.value);
-                                                            setBeat(b);
-                                                            if (playing) eng.current.setFrequencies(b, carrier);
-                                                        }
-                                                    }),
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        className: "flex justify-between",
-                                                        style: {
-                                                            color: "#33ff3330",
-                                                            fontSize: "12px"
-                                                        },
-                                                        children: [
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                children: "0.5 HZ"
-                                                            }),
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                children: "44.0 HZ"
-                                                            })
-                                                        ]
-                                                    }),
-                                                    beat > BINAURAL_MAX_BEAT && mode === "binaural" && /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        style: {
-                                                            color: "#ffaa00",
-                                                            fontSize: "12px",
-                                                            marginTop: "4px"
-                                                        },
-                                                        children: [
-                                                            "\u26A0 BINAURAL BEATS ABOVE ",
-                                                            BINAURAL_MAX_BEAT,
-                                                            "HZ ARE IMPERCEPTIBLE \u2014 SWITCH TO ISOCHRONIC"
-                                                        ]
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                children: [
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        className: "flex justify-between mb-1",
-                                                        children: [
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                style: {
-                                                                    color: "#33ff3370"
-                                                                },
-                                                                children: "CARRIER TONE"
-                                                            }),
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsxs)("span", {
-                                                                style: {
-                                                                    color: "#33ff3399"
-                                                                },
-                                                                children: [
-                                                                    carrier,
-                                                                    " HZ"
-                                                                ]
-                                                            })
-                                                        ]
-                                                    }),
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("input", {
-                                                        type: "range",
-                                                        min: "100",
-                                                        max: "500",
-                                                        step: "5",
-                                                        value: carrier,
-                                                        className: "w-full",
-                                                        style: {
-                                                            color: "#33ff33"
-                                                        },
-                                                        onChange: (e)=>{
-                                                            const c = Number(e.target.value);
-                                                            setCarrier(c);
-                                                            if (playing) eng.current.setFrequencies(beat, c);
-                                                        }
-                                                    }),
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        className: "flex justify-between",
-                                                        style: {
-                                                            color: "#33ff3330",
-                                                            fontSize: "12px"
-                                                        },
-                                                        children: [
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                children: "100 HZ"
-                                                            }),
-                                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)("span", {
-                                                                children: "500 HZ"
-                                                            })
-                                                        ]
-                                                    }),
-                                                    /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                                                        style: {
-                                                            color: "#33ff3340",
-                                                            fontSize: "12px",
-                                                            marginTop: "4px"
-                                                        },
-                                                        children: [
-                                                            "BAND PRESET CARRIER: ",
-                                                            optimalCarrier(beat),
-                                                            " HZ FOR ",
-                                                            BANDS[getBand(beat)].label
-                                                        ]
-                                                    })
-                                                ]
-                                            }),
-                                            /*#__PURE__*/ (0, _jsxRuntime.jsx)(Btn, {
-                                                label: "[\u25B6 APPLY]",
-                                                onClick: ()=>{
-                                                    setActiveName("CUSTOM " + beat.toFixed(1) + "HZ");
-                                                    startAudio(beat, carrier);
-                                                }
-                                            })
-                                        ]
-                                    })
-                                ]
-                            }),
-                            view === "log" && /*#__PURE__*/ (0, _jsxRuntime.jsx)(LogPanel, {
-                                log: log
-                            })
-                        ]
-                    }),
-                    /*#__PURE__*/ (0, _jsxRuntime.jsx)("div", {
-                        className: "mt-6 pt-2",
-                        style: {
-                            borderTop: "1px solid #33ff3315"
-                        },
-                        children: /*#__PURE__*/ (0, _jsxRuntime.jsxs)("div", {
-                            style: {
-                                color: "#33ff3320",
-                                fontSize: "12px"
-                            },
-                            children: [
-                                "CONSCIOUSNESS MAP PROJECT \u2014 ",
-                                new Date().getFullYear(),
-                                " \u2014 ALL SYSTEMS NOMINAL"
-                            ]
-                        })
-                    })
-                ]
-            })
-        ]
-    });
+            key === "gamma" ? lh("div", { key: key + "-note", className: "advisory", style: { margin: "0 0 6px 12px" } }, "NOTE: ISOCHRONIC RECOMMENDED — BINAURAL IMPERCEPTIBLE ABOVE 30 HZ") : null
+        ];
+    })), view === "sessions" && lh(Section, { title: "SESSION PROTOCOLS" }, lh("div", { className: "guide", style: { marginBottom: "6px" } }, "CHOOSE A DESCENT. TOUCH IT AGAIN TO END IT."), PRESETS.map((preset)=>{
+        const total = preset.phases.reduce((s, p)=>s + p.minutes, 0);
+        const isActive = sessionOn && sessionPreset?.id === preset.id;
+        return lh(PickRow, {
+            key: preset.id,
+            label: preset.name,
+            right: `${total} MIN`,
+            active: isActive,
+            desc: lh("span", null, preset.desc, lh("br"), preset.phases.map((p, i)=>lh("span", { key: i, style: { marginRight: "10px", color: isActive && i === phaseIdx ? "#d6ffd9" : undefined } }, `${p.label} ${p.minutes}`))),
+            onClick: ()=>isActive ? stopGently() : startSession(preset)
+        });
+    })), view === "custom" && lh(Section, { title: "MANUAL TUNING" }, lh(SliderRow, {
+        label: "BEAT FREQUENCY",
+        valueText: `${beat.toFixed(1)} HZ (${bandInfo.label})`,
+        min: "0.5",
+        max: "44",
+        step: "0.5",
+        value: beat,
+        onChange: (e)=>{
+            const b = Number(e.target.value);
+            setBeat(b);
+            if (playing) eng.current.setFrequencies(b, carrier);
+        },
+        minText: "0.5 HZ",
+        maxText: "44.0 HZ",
+        note: beat > BINAURAL_MAX_BEAT && mode === "binaural" ? `WARNING: BINAURAL BEATS ABOVE ${BINAURAL_MAX_BEAT} HZ ARE IMPERCEPTIBLE — SWITCH TO ISOCHRONIC` : null
+    }), lh(SliderRow, {
+        label: "CARRIER TONE",
+        valueText: `${carrier} HZ`,
+        min: "100",
+        max: "500",
+        step: "5",
+        value: carrier,
+        onChange: (e)=>{
+            const c = Number(e.target.value);
+            setCarrier(c);
+            if (playing) eng.current.setFrequencies(beat, c);
+        },
+        minText: "100 HZ",
+        maxText: "500 HZ",
+        hint: `BAND PRESET CARRIER: ${optimalCarrier(beat)} HZ FOR ${bandInfo.label}`
+    }), lh(Cmd, {
+        label: "▶ APPLY",
+        onClick: ()=>{
+            setActiveName("CUSTOM " + beat.toFixed(1) + "HZ");
+            startAudio(beat, carrier);
+        }
+    })), view === "log" && lh(LogPanel, { log }), lh("div", { style: { marginTop: "26px", paddingTop: "8px", borderTop: "1px solid rgba(51,255,51,0.15)", fontSize: "12px", letterSpacing: "0.08em", color: "rgba(51,255,51,0.3)" } }, `LANTERN-1 · CONSCIOUSNESS MAP · ${new Date().getFullYear()} · ALL SYSTEMS NOMINAL`)));
 }
 function App() {
     const [booted, setBooted] = (0, _react.useState)(false);
