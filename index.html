@@ -15222,7 +15222,22 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
             // ~18% of dots render as 2x2 for extra texture/variation
             sizeArr[i] = Math.random() < 0.18 ? 2 : 1;
         }
-        fieldRef.current = { bx, by, ph, waveK, density, respRate, sizeArr, N };
+        // A grid over the (fixed) dot positions, so a raindrop only has to visit the dots near it
+        const CS = 16;
+        const gw = Math.ceil(W / CS), gh = Math.ceil(H / CS);
+        const cellOf = new Int32Array(N);
+        const cellStart = new Int32Array(gw * gh + 1);
+        for (let i = 0; i < N; i++) {
+            const c = Math.min(gh - 1, (by[i] / CS) | 0) * gw + Math.min(gw - 1, (bx[i] / CS) | 0);
+            cellOf[i] = c;
+            cellStart[c + 1]++;
+        }
+        for (let c = 0; c < gw * gh; c++) cellStart[c + 1] += cellStart[c];
+        const cellItems = new Int32Array(N);
+        const fillAt = cellStart.slice(0, gw * gh);
+        for (let i = 0; i < N; i++) cellItems[fillAt[cellOf[i]]++] = i;
+        const dAdd = new Float32Array(N * 3);     // what rain does to each dot this frame: brightness, dx, dy
+        fieldRef.current = { bx, by, ph, waveK, density, respRate, sizeArr, N, CS, gw, gh, cellStart, cellItems, dAdd };
     }, []);
 
     // Render loop — a phosphor sea. Particles are painted into a persistence buffer that fades
@@ -15406,6 +15421,28 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                     const elev = 0.62 * c1 + 0.38 * Math.cos(th2) + 0.22 * Math.cos(th3) * (0.5 + 0.5 * c1);
                     const crest = elev > 0 ? elev : 0;
                     // thin, bright crest lines over a faint deep-water glow
+// Visit every dot whose grid cell lies within `r` of (x, y)
+function eachDotNear(f, x, y, r, fn) {
+    const x0 = Math.max(0, ((x - r) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r) / f.CS) | 0);
+    const y0 = Math.max(0, ((y - r) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r) / f.CS) | 0);
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+        const c = cy * f.gw + cx;
+        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
+    }
+}
+// Visit the dots in cells near the ring between radii r0 and r1 around (x, y) (skips the interior)
+function eachDotInRing(f, x, y, r0, r1, fn) {
+    const x0 = Math.max(0, ((x - r1) / f.CS) | 0), x1 = Math.min(f.gw - 1, ((x + r1) / f.CS) | 0);
+    const y0 = Math.max(0, ((y - r1) / f.CS) | 0), y1 = Math.min(f.gh - 1, ((y + r1) / f.CS) | 0);
+    const slack = f.CS * 0.75;                        // a cell's centre can be this far from its corners
+    for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) {
+        const dc = Math.hypot((cx + 0.5) * f.CS - x, (cy + 0.5) * f.CS - y);
+        if (dc < r0 - slack || dc > r1 + slack) continue;
+        const c = cy * f.gw + cx;
+        for (let k = f.cellStart[c]; k < f.cellStart[c + 1]; k++) fn(f.cellItems[k]);
+    }
+}
+
                     oceanI = 0.12 + 0.88 * crest * crest * crest;
                 }
 
@@ -15444,73 +15481,7 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                 oy += dy * invDist * push;
 
                 bctx.fillStyle = PHOSPHOR_LUT[(alpha * 255) | 0];
-                const sz = sizeArr[i];
                 bctx.fillRect((x + ox) | 0, (y + oy) | 0, sz, sz);
-            }
-
-            // ── Rain: drops landing on the sea ──
-            // Each drop is a small hot splash, then dotted rings that spread and fade, with a
-            // fainter ring or two following inside. They come at random, small and local, so the
-            // surface reads as rain-pocked water rather than anything flashing.
-            const drops = dropsRef.current;
-            if (isRain) {
-                const rainVol = vol * 0.7 + 0.28;
-                const sc = W / 680;                                   // keep drop size proportional on the small canvas
-                let expect = (3 + 12 * rainVol) * PHOSPHOR.rainDrops * lod * dt;
-                while (expect > 0) {
-                    if (Math.random() < Math.min(1, expect) && drops.length < 70) {
-                        const rmax = (16 + Math.random() * 38) * sc;
-                        drops.push({
-                            x: 10 + Math.random() * (W - 20),
-                            y: 10 + Math.random() * (H - 20),
-                            t0: t,
-                            rmax,
-                            life: 1.3 + rmax / sc / 38,                    // bigger drops ring for longer
-                            s: 0.55 + Math.random() * 0.45,
-                            a: Math.random() * 6.283
-                        });
-                    }
-                    expect -= 1;
-                }
-            } else if (drops.length) drops.length = 0;
-
-            if (drops.length) {
-                const rings = [[1, 1], [0.62, 0.6], [0.34, 0.36]];     // [radius share, brightness share]
-                const nRings = lod < 1 ? 2 : 3;
-                bctx.lineWidth = 1.3;
-                bctx.setLineDash([1.4, 2.4]);
-                for (let d = drops.length - 1; d >= 0; d--) {
-                    const dr = drops[d];
-                    const age = t - dr.t0;
-                    if (age >= dr.life) {
-                        drops.splice(d, 1);
-                        continue;
-                    }
-                    const u = age / dr.life;
-                    const fade = Math.pow(1 - u, 1.5) * dr.s;
-                    const rho = dr.rmax * (1 - (1 - u) * (1 - u));      // quick start, slow spread
-                    // The splash: a hot core and six specks thrown outward, gone in a quarter second
-                    if (age < 0.24) {
-                        const k = 1 - age / 0.24;
-                        bctx.fillStyle = PHOSPHOR_LUT[(255 * Math.min(1, k * dr.s * 1.3)) | 0];
-                        bctx.fillRect((dr.x | 0) - 1, (dr.y | 0) - 1, 3, 3);
-                        const throwR = 2 + age * 55 * (W / 680);
-                        for (let j = 0; j < 6; j++) {
-                            const ang = dr.a + j * 1.047;
-                            bctx.fillRect((dr.x + Math.cos(ang) * throwR) | 0, (dr.y + Math.sin(ang) * throwR * 0.8) | 0, 1, 1);
-                        }
-                    }
-                    for (let r = 0; r < nRings; r++) {
-                        const rr = rho * rings[r][0];
-                        const I = fade * rings[r][1] * 1.0;
-                        if (rr < 1.5 || I < 0.03) continue;
-                        bctx.strokeStyle = PHOSPHOR_LUT[(255 * Math.min(1, I)) | 0];
-                        bctx.beginPath();
-                        bctx.arc(dr.x, dr.y, rr, 0, 6.2832);
-                        bctx.stroke();
-                    }
-                }
-                bctx.setLineDash([]);
             }
 
             // (No beat-synced rings or flashes: isochronic mode shows the interference of the
@@ -15581,6 +15552,132 @@ function AsciiWaveform({ beat, playing, width = 64 }) {
         const y1 = Math.sin(x / width * Math.PI * 6 + t) * 3;
         const y2 = Math.sin(x / width * Math.PI * 6 + t + beat * 0.1) * 3;
         const envelope = Math.cos(x / width * Math.PI * 2 * (beat / 6) + t * 0.5);
+            // ── Rain: a droplet falls into the sea ──
+            // A drop is a bright speck that falls and lands; after that the sea's own dots do the
+            // work. The dots under it brighten as it nears. At the impact a crater opens, a few dots
+            // are flung up on ballistic arcs (one straight up: the rebound jet), and a ring wave runs
+            // out through the field, bunching and lighting the dots it passes, as the swell does.
+            const drops = dropsRef.current;
+            const falling = [];                          // x, y, speed, scale: drawn as crisp specks after compositing
+            const dAdd = field.dAdd;
+            let hasDrops = false;
+            if (isRain) {
+                const rainVol = vol * 0.7 + 0.28;
+                const sc = W / 680;                      // keep drop size proportional on the small canvas
+                let expect = (3 + 9 * rainVol) * PHOSPHOR.rainDrops * lod * dt;
+                while (expect > 0) {
+                    if (Math.random() < Math.min(1, expect) && drops.length < 26) {
+                        const big = Math.random();
+                        const tf = 0.34 + Math.random() * 0.1;
+                        drops.push({
+                            x: 16 * sc + Math.random() * (W - 32 * sc),
+                            y: 24 * sc + Math.random() * (H - 40 * sc),
+                            t0: t, sc, tf,
+                            hf: (70 + Math.random() * 50) * sc,                  // height it falls from
+                            s: 0.6 + big * 0.4,                                   // strength
+                            c: (40 + Math.random() * 20 + big * 12) * sc,        // how fast the ring spreads, px/s
+                            life: tf + 3.2 + big * 0.6,
+                            jets: null
+                        });
+                    }
+                    expect -= 1;
+                }
+            } else if (drops.length) drops.length = 0;
+            if (drops.length) {
+                hasDrops = true;
+                dAdd.fill(0);
+                for (let n = drops.length - 1; n >= 0; n--) {
+                    const dr = drops[n];
+                    const age = t - dr.t0;
+                    if (age >= dr.life) {
+                        drops.splice(n, 1);
+                        continue;
+                    }
+                    const sc = dr.sc;
+                    if (age < dr.tf) {
+                        // Falling: the surface brightens a little under the drop as it nears
+                        const u = age / dr.tf;
+                        falling.push(dr.x, dr.y - dr.hf * (1 - u * u), 2 * dr.hf * u / dr.tf, sc);
+                        const gr = 18 * sc, near = u * u * 0.7 * dr.s;
+                        eachDotNear(field, dr.x, dr.y, gr, (i)=>{
+                            const ddx = bx[i] - dr.x, ddy = by[i] - dr.y, d = Math.sqrt(ddx * ddx + ddy * ddy);
+                            if (d < gr) dAdd[i * 3] += near * (1 - d / gr);
+                        });
+                        continue;
+                    }
+                    const a = age - dr.tf;               // seconds since the impact
+                    // At the moment of impact, pick the dots that will be thrown: the ones nearest it
+                    if (!dr.jets) {
+                        const near = [];
+                        eachDotNear(field, dr.x, dr.y, 12 * sc, (i)=>{
+                            const ddx = bx[i] - dr.x, ddy = by[i] - dr.y;
+                            near.push([ddx * ddx + ddy * ddy, i]);
+                        });
+                        near.sort((p, q)=>p[0] - q[0]);
+                        // A small crown: mostly upward, little sideways, so it rises and falls back
+                        dr.jets = near.slice(0, 8).map(([, i], j)=>{
+                            if (j === 0) return { i, vx: 0, vy: -(140 + Math.random() * 40) * sc * dr.s };      // the rebound jet
+                            const ang = Math.random() * 6.283, sp = (14 + Math.random() * 40) * sc * dr.s;
+                            return { i, vx: Math.cos(ang) * sp, vy: -(40 + Math.random() * 70) * sc * dr.s };
+                        });
+                    }
+                    // Flung dots: ballistic arcs, white-hot in the air, then they slide back into the sea
+                    const G = 520 * sc;
+                    for (let j = 0; j < dr.jets.length; j++) {
+                        const jt = dr.jets[j];
+                        const aLand = -2 * jt.vy / G;     // when the dot is back at the surface
+                        let jx, jy, hot;
+                        if (a < aLand) {
+                            jx = jt.vx * a;
+                            jy = jt.vy * a + 0.5 * G * a * a;
+                            hot = 0.95 - 0.35 * (a / aLand);
+                        } else {
+                            const back = a - aLand;
+                            jx = jt.vx * aLand * Math.exp(-back / 0.18);
+                            jy = 0;
+                            hot = 0.6 * Math.exp(-back / 0.2);
+                        }
+                        const k = jt.i * 3;
+                        dAdd[k] += hot * dr.s;
+                        dAdd[k + 1] += jx;
+                        dAdd[k + 2] += jy;
+                    }
+                    // The crater: dots near the impact are shoved outward and flash, then settle back
+                    if (a < 0.9) {
+                        const rc = 9 * sc, press = 6 * sc * dr.s * Math.exp(-a / 0.2), flash = 0.5 * dr.s * Math.exp(-a / 0.1);
+                        eachDotNear(field, dr.x, dr.y, rc, (i)=>{
+                            const ddx = bx[i] - dr.x, ddy = by[i] - dr.y, d = Math.sqrt(ddx * ddx + ddy * ddy);
+                            if (d >= rc || d < 0.01) return;
+                            const w = 1 - d / rc, k = i * 3;
+                            dAdd[k] += flash * w;
+                            dAdd[k + 1] += ddx / d * press * w * w;
+                            dAdd[k + 2] += ddy / d * press * w * w;
+                        });
+                    }
+                    // The wave: a ring (and a fainter one trailing it) that pulls the dots it passes
+                    // toward its crest, so they bunch into a thin glowing line
+                    const r = dr.c * a + 3 * sc;
+                    const env = dr.s * Math.exp(-a / 1.9) / Math.sqrt(1 + r / (45 * sc));
+                    if (env > 0.02) {
+                        for (let w = 0; w < 2; w++) {
+                            if (w && r < 16 * sc) continue;           // the trailing ring only once the first has cleared the crater
+                            const rw = w ? r * 0.62 : r, amp = w ? 0.55 : 1;
+                            const sig = (3 + 0.035 * rw / sc) * sc;
+                            eachDotInRing(field, dr.x, dr.y, rw - 3 * sig, rw + 3 * sig, (i)=>{
+                                const ddx = bx[i] - dr.x, ddy = by[i] - dr.y, d = Math.sqrt(ddx * ddx + ddy * ddy);
+                                const u = (d - rw) / sig;
+                                if (u < -3 || u > 3 || d < 0.01) return;
+                                const g = Math.exp(-u * u), k = i * 3;
+                                dAdd[k] += amp * env * g * 1.6;
+                                const pull = -0.6 * sig * amp * env * u * g * 1.9;
+                                dAdd[k + 1] += ddx / d * pull;
+                                dAdd[k + 2] += ddy / d * pull;
+                            });
+                        }
+                    }
+                }
+            }
+
         const idx1 = Math.floor((y1 * envelope + 3) / 6 * (chars.length - 1));
         const idx2 = Math.floor((y2 * envelope + 3) / 6 * (chars.length - 1));
         line1 += chars[Math.max(0, Math.min(chars.length - 1, idx1))];
@@ -15661,6 +15758,7 @@ function playClick() {
 // Boot audio: every voice runs through one quiet bus so the whole sequence sits well under
 // your session volume, with a short damped echo on the pings for a sonar feel.
 function createBootAudio() {
+                if (hasDrops) alpha += dAdd[i * 3];
     const ctx = getUiCtx();
     const bus = ctx.createGain();
     bus.gain.value = 0.9;
@@ -15669,6 +15767,12 @@ function createBootAudio() {
     const echo = ctx.createDelay(1);
     const feedback = ctx.createGain();
     const damp = ctx.createBiquadFilter();
+                let sz = sizeArr[i];
+                if (hasDrops) {
+                    ox += dAdd[i * 3 + 1];
+                    oy += dAdd[i * 3 + 2];
+                    if (dAdd[i * 3] > 0.45) sz = 2;       // dots lit by a drop read a little bolder
+                }
     echo.delayTime.value = 0.31;
     feedback.gain.value = 0.36;
     damp.type = "lowpass";
@@ -15762,6 +15866,27 @@ function createBootAudio() {
             dgg.gain.exponentialRampToValueAtTime(0.0001, t + 1.6);
             dg.connect(dgg);
             dgg.connect(bus);
+            // Falling drops: a crisp teardrop above the water (not painted into the afterglow, so it
+            // leaves no streak), with a small halo and a short tail that lengthens as it speeds up
+            for (let f = 0; f < falling.length; f += 4) {
+                const fx = Math.round(falling[f]), fy = Math.round(falling[f + 1]), fs = falling[f + 3];
+                const tail = Math.min(34 * fs, falling[f + 2] * 0.08);
+                const halo = ctx.createRadialGradient(fx, fy, 0, fx, fy, 13 * fs);
+                halo.addColorStop(0, "rgba(220,255,225,0.65)");
+                halo.addColorStop(1, "rgba(51,255,51,0)");
+                ctx.fillStyle = halo;
+                ctx.fillRect(fx - 14 * fs, fy - 14 * fs, 28 * fs, 28 * fs);
+                // a teardrop: a rounded head, a fine point above it, and a few fading specks behind
+                for (let k = 1; k <= 5; k++) {
+                    ctx.fillStyle = PHOSPHOR_LUT[(255 * (1 - k / 6) * 0.85) | 0];
+                    ctx.fillRect(fx, Math.round(fy - 8 - k * tail / 5), 1, 2);
+                }
+                ctx.fillStyle = PHOSPHOR_LUT[255];
+                ctx.fillRect(fx - 2, fy - 3, 4, 6);          // head
+                ctx.fillRect(fx - 1, fy - 6, 2, 3);          // neck
+                ctx.fillRect(fx, fy - 8, 1, 2);              // point
+            }
+
             dg.start(t + 0.3);
             lfo.start(t + 0.3);
             dg.stop(t + 1.7);
