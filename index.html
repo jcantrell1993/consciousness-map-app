@@ -15018,12 +15018,27 @@ class AudioEngine {
    PARTICLE FIELD VISUALIZER
    Looking down on a pool of particles that respond to audio.
    ═══════════════════════════════════════════════════════════ */
-// Pre-built alpha LUT for fast fillStyle — avoids string concatenation per particle
-const PARTICLE_ALPHA_LUT = (()=>{
+// ── Phosphor look ──
+// Everything about how the field looks lives here; adjust to taste.
+const PHOSPHOR = {
+    fps: 40,             // frame cap (saves battery; the motion is slow)
+    decaySeconds: 0.22,  // afterglow: time for a trail to fall to 1/e of its brightness
+    bloom: 1.6,          // tight halo strength (applied to the bright areas only)
+    halo: 2.2,           // wide, soft halo strength
+    hot: 0.55,           // how white-hot the brightest dots get (0 = pure green)
+    oceanSpeed: 1.0,     // 1 = calm swell; 2 = twice as fast
+    rainSwell: 0.55,     // rain falls on the same sea, calmer: 1 = full ocean swell, 0 = flat water
+    rainDrops: 1.0       // raindrop rate multiplier
+};
+// Intensity (0..255) -> opaque colour. Dim dots are deep green; the brightest burn toward
+// white-green, like the saturated core of a real phosphor.
+const PHOSPHOR_LUT = (()=>{
     const lut = new Array(256);
+    const smooth = (x)=>x * x * (3 - 2 * x);
     for (let i = 0; i < 256; i++) {
-        const h = i < 16 ? "0" + i.toString(16) : i.toString(16);
-        lut[i] = "#33ff33" + h;
+        const I = i / 255;
+        const core = PHOSPHOR.hot * smooth(Math.min(1, Math.max(0, (I - 0.5) / 0.5)));
+        lut[i] = `rgb(${Math.round(255 * (0.2 * I + 0.75 * core))},${Math.round(255 * I)},${Math.round(255 * (0.2 * I + 0.7 * core))})`;
     }
     return lut;
 })();
@@ -15032,6 +15047,8 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
     const canvasRef = (0, _react.useRef)(null);
     const fieldRef  = (0, _react.useRef)(null);
     const animRef   = (0, _react.useRef)(null);
+    const gfxRef    = (0, _react.useRef)(null);   // offscreen persistence + bloom layers
+    const dropsRef  = (0, _react.useRef)([]);     // raindrop impacts currently rippling
 
     // Build particle field + per-particle density map.  Fixed for the life of the component.
     (0, _react.useEffect)(()=>{
@@ -15072,30 +15089,78 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
         fieldRef.current = { bx, by, ph, waveK, density, respRate, sizeArr, N };
     }, []);
 
-    // Render loop — wave pool: generator at center, waves radiate outward at density-varying speeds
+    // Render loop — a phosphor sea. Particles are painted into a persistence buffer that fades
+    // slowly (the afterglow), then composed with a bloom chain for the glow.
     (0, _react.useEffect)(()=>{
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d");
         const W = canvas.width, H = canvas.height;
         const cx = W / 2, cy = H / 2;
+        ctx.imageSmoothingQuality = "high";
 
-        const draw = ()=>{
+        // Offscreen layers, created once: the persistence buffer, plus a half / quarter / eighth
+        // size chain (each step is an exact 2x2 average, so single-pixel dots blur without shimmer).
+        if (!gfxRef.current) {
+            const mk = (w, h, black)=>{
+                const c = document.createElement("canvas");
+                c.width = Math.max(1, w);
+                c.height = Math.max(1, h);
+                const x = c.getContext("2d");
+                x.imageSmoothingQuality = "high";
+                if (black) {
+                    x.fillStyle = "#000";
+                    x.fillRect(0, 0, c.width, c.height);
+                }
+                return { c, x };
+            };
+            gfxRef.current = { buf: mk(W, H, true), h2: mk(W >> 1, H >> 1), h4: mk(W >> 2, H >> 2), h8: mk(W >> 3, H >> 3), s4: mk(W >> 2, H >> 2), s8: mk(W >> 3, H >> 3) };
+        }
+        const { buf, h2, h4, h8, s4, s8 } = gfxRef.current;
+        // Square an image (multiply it by itself): dim areas fall away and only the bright ones
+        // keep their strength, so the glow comes from the highlights instead of veiling everything.
+        const squareInto = (dst, src)=>{
+            dst.x.globalCompositeOperation = "source-over";
+            dst.x.drawImage(src.c, 0, 0);
+            dst.x.globalCompositeOperation = "multiply";
+            dst.x.drawImage(src.c, 0, 0);
+            dst.x.globalCompositeOperation = "source-over";
+        };
+        const bctx = buf.x;
+
+        // Add `img` back over the picture `gain` times (alpha is capped at 1 per pass)
+        const addGain = (img, gain)=>{
+            for (let g = gain; g > 0.02; g -= 1) {
+                ctx.globalAlpha = g > 1 ? 1 : g;
+                ctx.drawImage(img, 0, 0, W, H);
+            }
+        };
+
+        const frameMs = 1000 / PHOSPHOR.fps;
+        let last = performance.now();
+        let quality = 2;      // 2 = both halos, 1 = tight halo only, 0 = none (drops if frames run long)
+        let lod = 1;          // fraction of the dots drawn; falls only after the glow is already off
+        let workEma = 0;
+
+        const draw = (now)=>{
             animRef.current = requestAnimationFrame(draw);
             const field = fieldRef.current;
             if (!field) return;
+            if (now - last < frameMs - 2) return;
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            const w0 = performance.now();
             const { bx, by, ph, waveK, density, respRate, sizeArr, N } = field;
 
-            // Hard clear — static does not linger
-            ctx.fillStyle = "#000";
-            ctx.fillRect(0, 0, W, H);
+            // Persistence: fade what is already there rather than clearing it
+            bctx.globalCompositeOperation = "source-over";
+            bctx.fillStyle = `rgba(0,0,0,${(1 - Math.exp(-dt / PHOSPHOR.decaySeconds)).toFixed(3)})`;
+            bctx.fillRect(0, 0, W, H);
 
-            const t   = performance.now() / 1000;
+            const t   = now / 1000;
             const vol = playing ? volume / 100 : 0;
 
-            // ── Emission rate — MUCH slower than before ──
-            // Loosely tied to beat Hz, but clamped so even fast beats give lazy ripples.
-            // At beat=1.5Hz → 0.45, at beat=4 → 1.0, at beat=10 → 1.8 (clamped at 2.0)
+            // ── Emission rate — loosely tied to beat Hz, clamped so even fast beats give lazy ripples.
             const emissionHz = playing
                 ? Math.max(0.35, Math.min(2.0, beat * 0.22))
                 : 0.30;
@@ -15104,13 +15169,14 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
             // Carrier shimmer — also slow
             const carrOmega = Math.max(0.6, Math.min(3.5, carrier * 0.014));
 
-            // Slow "breath" envelope that modulates the whole field — adds variation over time
+            // Slow "breath" envelope that modulates the whole field
             const breath = 0.7 + 0.3 * Math.sin(t * 0.18);
 
             // Ambient flags & pre-computed modifiers
             const isPink = ambient === "pink";
             const isBrown = ambient === "brown";
-            const isOcean = ambient === "ocean";
+            const isRain = ambient === "rain";
+            const isOcean = ambient === "ocean" || isRain;   // rain falls on the same sea
             const isoMulti = (mode === "isochronic" || mode === "both");
 
             // Brown — slow global deep pulse
@@ -15118,8 +15184,7 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                 ? 0.7 + 0.3 * Math.sin(t * 0.22)
                 : 1;
 
-            // Extra wave sources for isochronic — creates interference/collision patterns
-            // Four drifting sources at interior positions; their ripples collide with the center wave
+            // Extra wave sources for isochronic — their ripples interfere with the center wave
             const isoS0x = W * (0.22 + 0.03 * Math.sin(t * 0.11));
             const isoS0y = H * (0.28 + 0.04 * Math.cos(t * 0.13));
             const isoS1x = W * (0.78 + 0.03 * Math.cos(t * 0.09));
@@ -15129,21 +15194,32 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
             const isoS3x = W * (0.74 + 0.04 * Math.cos(t * 0.12));
             const isoS3y = H * (0.72 + 0.03 * Math.sin(t * 0.16));
 
-            // Ocean wave sources — origin drifts just outside the bottom-left
-            // corner so the wave radiates diagonally across the field. A second
-            // slower "chop" source nearby creates cross-hatching for wild texture.
-            const oceanOx    = W * (-0.05 + 0.04 * Math.sin(t * 0.18));
-            const oceanOy    = H * ( 1.05 + 0.03 * Math.cos(t * 0.14));
-            const oceanCxS   = W * ( 0.12 + 0.05 * Math.cos(t * 0.21));
-            const oceanCyS   = H * ( 0.92 + 0.04 * Math.sin(t * 0.17));
-            const oceanOmega = omega * 0.55;
+            // ── Ocean: two crossing swells plus a fine chop ──
+            // Particles move the way water's surface does (Gerstner waves): each is pushed along the
+            // swell direction as a sine of its phase, so they bunch up at the crests, which then
+            // read as brighter, denser, glowing ridges, with no flashing needed.
+            const oceanAmp = isOcean
+                ? (playing ? 0.65 + vol * 0.5 : 0.5) * (0.85 + 0.15 * Math.sin(t * 0.07)) * (isRain ? PHOSPHOR.rainSwell : 1)
+                : 0;
+            const speed = PHOSPHOR.oceanSpeed * (0.8 + 0.4 * Math.min(1.2, beat / 10));
+            const a1 = 0.62 + 0.18 * Math.sin(t * 0.031);        // swell heading drifts slowly
+            const a2 = a1 + 0.75, a3 = a1 - 0.55;
+            const d1x = Math.cos(a1), d1y = -Math.sin(a1);
+            const d2x = Math.cos(a2), d2y = -Math.sin(a2);
+            const d3x = Math.cos(a3), d3y = -Math.sin(a3);
+            const K1 = 2 * Math.PI / 185, K2 = 2 * Math.PI / 120, K3 = 2 * Math.PI / 50;
+            const W1 = 2 * Math.PI / 9 * speed, W2 = 2 * Math.PI / 6.5 * speed, W3 = 2 * Math.PI / 2.8 * speed;
+            const A1 = 0.45 / K1, A2 = 0.32 / K2;                 // steepness 0.45 / 0.32
 
             // Static baseline
             const staticBase = playing ? 0.14 : 0.10;
             // Ripple strength — visible at any volume
             const rippleStr = playing ? (0.55 + vol * 0.55) * breath : 0.15;
+            // In ocean mode the center ripple steps back so the swell reads
+            const rippleMix = isOcean ? 0.3 : 1;
 
-            for (let i = 0; i < N; i++) {
+            const drawN = (N * lod) | 0;
+            for (let i = 0; i < drawN; i++) {
                 const x  = bx[i], y = by[i];
                 const dx = x - cx, dy = y - cy;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -15152,15 +15228,12 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                 const resp = respRate[i];
 
                 // ── Primary ripple: sharp pulse radiating from center ──
-                // omega is slow → ripples crawl outward.
-                // k_i varies by density → wavefront distorts organically.
                 const phase1 = dist * k_i - t * omega + ph[i] * 0.35;
                 const s1 = Math.sin(phase1);
                 const s1p = s1 > 0 ? s1 : 0;
                 let ripple = s1p * s1p * s1p;               // narrow sharp pulse
 
                 // ── Isochronic multi-source interference ──
-                // Extra wavefronts from four drifting sources collide with the center wave
                 if (isoMulti) {
                     const dx0 = x - isoS0x, dy0 = y - isoS0y;
                     const d0 = Math.sqrt(dx0 * dx0 + dy0 * dy0);
@@ -15178,38 +15251,26 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                     const pp1 = p1 > 0 ? p1 : 0;
                     const pp2 = p2 > 0 ? p2 : 0;
                     const pp3 = p3 > 0 ? p3 : 0;
-                    // Sharpen each and add — collisions create bright interference nodes
                     const extra = pp0*pp0*pp0 + pp1*pp1*pp1 + pp2*pp2*pp2 + pp3*pp3*pp3;
-                    ripple = (ripple + extra) * 0.62;        // rebalance — avoid oversaturation
+                    ripple = (ripple + extra) * 0.62;
                 }
 
-                // ── Ocean wave: organic swell emanating from bottom-left corner ──
-                // Three layered sinusoids (swell + chop + cross-chop) give a
-                // broken, wild surface. Kept signed (not cubed) so particles
-                // surf bidirectionally along the propagation direction, and
-                // the brightness contribution is squared so both crest and
-                // trough light up — interfering naturally with the center
-                // ripple and isochronic multi-sources above.
-                let oceanBright = 0;
-                let oceanDirX = 0, oceanDirY = 0;
-                let oceanSigned = 0;
+                // ── Ocean surface ──
+                let ox = 0, oy = 0, oceanI = 0;
                 if (isOcean) {
-                    const dxO = x - oceanOx, dyO = y - oceanOy;
-                    const dO  = Math.sqrt(dxO * dxO + dyO * dyO);
-                    const dxC = x - oceanCxS, dyC = y - oceanCyS;
-                    const dC  = Math.sqrt(dxC * dxC + dyC * dyC);
-                    // Main swell — long wavelength, slow omega
-                    const swell = Math.sin(dO * k_i * 0.55 - t * oceanOmega + ph[i] * 0.15);
-                    // Surface chop — shorter wavelength, faster
-                    const chop  = Math.sin(dC * k_i * 1.15 - t * oceanOmega * 1.75 + ph[i] * 0.45);
-                    // Cross-chop — planar diagonal front breaks up radial symmetry
-                    const crossPhase = (x * 0.008 + (H - y) * 0.011) - t * oceanOmega * 1.2;
-                    const cross = Math.sin(crossPhase + ph[i] * 0.25);
-                    oceanSigned = swell * 0.75 + chop * 0.45 + cross * 0.3;
-                    oceanBright = oceanSigned * oceanSigned * 0.85;
-                    const invDO = dO > 0.5 ? 1 / dO : 0;
-                    oceanDirX = dxO * invDO;
-                    oceanDirY = dyO * invDO;
+                    const dn = density[i];                      // smooth noise: bends the wave fronts
+                    const th1 = K1 * (dx * d1x + dy * d1y) - t * W1 + dn * 0.9;
+                    const th2 = K2 * (dx * d2x + dy * d2y) - t * W2 - dn * 0.7 + 1.3;
+                    const th3 = K3 * (dx * d3x + dy * d3y) - t * W3 + ph[i] * 0.2;
+                    const sw1 = Math.sin(th1), sw2 = Math.sin(th2);
+                    ox = -(A1 * sw1 * d1x + A2 * sw2 * d2x) * oceanAmp;
+                    oy = -(A1 * sw1 * d1y + A2 * sw2 * d2y) * oceanAmp;
+                    const c1 = Math.cos(th1);
+                    // Surface height: swells, with the chop riding on the big crests
+                    const elev = 0.62 * c1 + 0.38 * Math.cos(th2) + 0.22 * Math.cos(th3) * (0.5 + 0.5 * c1);
+                    const crest = elev > 0 ? elev : 0;
+                    // thin, bright crest lines over a faint deep-water glow
+                    oceanI = 0.12 + 0.88 * crest * crest * crest;
                 }
 
                 // ── Carrier shimmer: finer secondary ripple, also slow ──
@@ -15222,20 +15283,18 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                 const idle = (Math.sin(t * 0.85 + ph[i] * 4.1) * 0.5 + 0.5) * 0.18;
 
                 // Ambient particle-level contributions
-                // Pink: fine even hiss — random per-frame sparkle boost (noisy but calm)
                 const pinkBoost = isPink
                     ? (Math.random() < 0.09 ? 0.18 : 0) + 0.05 * Math.sin(t * 1.6 + ph[i] * 3.3)
                     : 0;
-                // Brown: slow deep breath — all particles rise/fall together
                 const brownBoost = isBrown
                     ? (brownPulse - 1) * 0.55 + 0.06 * Math.sin(dist * 0.005 - t * 0.4)
                     : 0;
                 const ambBoost = pinkBoost + brownBoost;
 
-                // ── Compose alpha ──
-                let alpha = staticBase
-                          + ripple * rippleStr * resp * 1.5
-                          + oceanBright * rippleStr * resp * 1.35
+                // ── Compose intensity ──
+                let alpha = staticBase * (isOcean ? 0.6 : 1)
+                          + ripple * rippleStr * resp * 1.5 * rippleMix
+                          + oceanI * oceanAmp * (0.75 + 0.5 * resp) * 1.0
                           + carrierRipple * (vol * 0.6 + 0.1)
                           + idle * vol * 0.4
                           + ambBoost * vol;
@@ -15243,127 +15302,113 @@ function ParticleVisualizer({ beat, carrier, volume, playing, mode, ambient, eng
                 if (alpha > 1) alpha = 1;
                 if (alpha < 0.02) continue;  // skip near-invisible dots — major perf win
 
-                // Radial displacement: particles surf on the passing wave front
-                const push = ripple * rippleStr * resp * 4;
-                let ox = dx * invDist * push;
-                let oy = dy * invDist * push;
+                // Radial displacement: particles surf on the passing ripple front
+                const push = ripple * rippleStr * resp * 4 * rippleMix;
+                ox += dx * invDist * push;
+                oy += dy * invDist * push;
 
-                // Ocean displacement: particles surge along the diagonal
-                // propagation direction, creating cross-motion that interferes
-                // with the radial pushes above — this is what makes it look wild.
-                if (isOcean) {
-                    const oceanPush = oceanSigned * rippleStr * resp * 3.2;
-                    ox += oceanDirX * oceanPush;
-                    oy += oceanDirY * oceanPush;
-                }
-
-                const a255 = (alpha * 255) | 0;
-                ctx.fillStyle = PARTICLE_ALPHA_LUT[a255];
+                bctx.fillStyle = PHOSPHOR_LUT[(alpha * 255) | 0];
                 const sz = sizeArr[i];
-                ctx.fillRect((x + ox) | 0, (y + oy) | 0, sz, sz);
+                bctx.fillRect((x + ox) | 0, (y + oy) | 0, sz, sz);
             }
 
-            // ── Monochrome green ambient overlays — stay inline with CRT aesthetic ──
-            if (ambient === "rain") {
-                // Gentle vertical rain streaks — no glyphs, just green lines
-                // Each column falls at its own speed; the head is brighter than
-                // the tail. Two batched strokes keep this cheap per frame.
-                const colW = IS_MOBILE ? 10 : 12;
-                const cols = Math.floor(W / colW);
+            // ── Rain: drops landing on the sea ──
+            // Each drop is a small hot splash, then dotted rings that spread and fade, with a
+            // fainter ring or two following inside. They come at random, small and local, so the
+            // surface reads as rain-pocked water rather than anything flashing.
+            const drops = dropsRef.current;
+            if (isRain) {
                 const rainVol = vol * 0.7 + 0.28;
-
-                // Dim tails
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = `rgba(51, 255, 51, ${0.28 * rainVol})`;
-                ctx.beginPath();
-                for (let c = 0; c < cols; c++) {
-                    const speed = 90 + ((c * 53) % 110);          // 90..200 px/s
-                    const len   = 14 + ((c * 17) % 18);           // 14..32 px tall
-                    const phase = (c * 37) % 137;
-                    const y     = ((t * speed + phase * 5) % (H + len + 30)) - len - 15;
-                    const x     = c * colW + 3 + ((c * 11) % 4);
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x, y + len - 4);
+                const sc = W / 680;                                   // keep drop size proportional on the small canvas
+                let expect = (3 + 12 * rainVol) * PHOSPHOR.rainDrops * lod * dt;
+                while (expect > 0) {
+                    if (Math.random() < Math.min(1, expect) && drops.length < 70) {
+                        const rmax = (16 + Math.random() * 38) * sc;
+                        drops.push({
+                            x: 10 + Math.random() * (W - 20),
+                            y: 10 + Math.random() * (H - 20),
+                            t0: t,
+                            rmax,
+                            life: 1.3 + rmax / sc / 38,                    // bigger drops ring for longer
+                            s: 0.55 + Math.random() * 0.45,
+                            a: Math.random() * 6.283
+                        });
+                    }
+                    expect -= 1;
                 }
-                ctx.stroke();
+            } else if (drops.length) drops.length = 0;
 
-                // Bright heads
-                ctx.lineWidth = 1.2;
-                ctx.strokeStyle = `rgba(180, 255, 190, ${0.72 * rainVol})`;
-                ctx.beginPath();
-                for (let c = 0; c < cols; c++) {
-                    const speed = 90 + ((c * 53) % 110);
-                    const len   = 14 + ((c * 17) % 18);
-                    const phase = (c * 37) % 137;
-                    const y     = ((t * speed + phase * 5) % (H + len + 30)) - len - 15;
-                    const x     = c * colW + 3 + ((c * 11) % 4);
-                    ctx.moveTo(x, y + len - 4);
-                    ctx.lineTo(x, y + len);
+            if (drops.length) {
+                const rings = [[1, 1], [0.62, 0.6], [0.34, 0.36]];     // [radius share, brightness share]
+                const nRings = lod < 1 ? 2 : 3;
+                bctx.lineWidth = 1.3;
+                bctx.setLineDash([1.4, 2.4]);
+                for (let d = drops.length - 1; d >= 0; d--) {
+                    const dr = drops[d];
+                    const age = t - dr.t0;
+                    if (age >= dr.life) {
+                        drops.splice(d, 1);
+                        continue;
+                    }
+                    const u = age / dr.life;
+                    const fade = Math.pow(1 - u, 1.5) * dr.s;
+                    const rho = dr.rmax * (1 - (1 - u) * (1 - u));      // quick start, slow spread
+                    // The splash: a hot core and six specks thrown outward, gone in a quarter second
+                    if (age < 0.24) {
+                        const k = 1 - age / 0.24;
+                        bctx.fillStyle = PHOSPHOR_LUT[(255 * Math.min(1, k * dr.s * 1.3)) | 0];
+                        bctx.fillRect((dr.x | 0) - 1, (dr.y | 0) - 1, 3, 3);
+                        const throwR = 2 + age * 55 * (W / 680);
+                        for (let j = 0; j < 6; j++) {
+                            const ang = dr.a + j * 1.047;
+                            bctx.fillRect((dr.x + Math.cos(ang) * throwR) | 0, (dr.y + Math.sin(ang) * throwR * 0.8) | 0, 1, 1);
+                        }
+                    }
+                    for (let r = 0; r < nRings; r++) {
+                        const rr = rho * rings[r][0];
+                        const I = fade * rings[r][1] * 1.0;
+                        if (rr < 1.5 || I < 0.03) continue;
+                        bctx.strokeStyle = PHOSPHOR_LUT[(255 * Math.min(1, I)) | 0];
+                        bctx.beginPath();
+                        bctx.arc(dr.x, dr.y, rr, 0, 6.2832);
+                        bctx.stroke();
+                    }
                 }
-                ctx.stroke();
+                bctx.setLineDash([]);
             }
 
-            // Ocean is now rendered directly in the particle field above —
-            // no post-processing overlay needed.
+            // (No beat-synced rings or flashes: isochronic mode shows the interference of the
+            // drifting sources in the field above, and nothing pulses on and off.)
 
-            // ── Isochronic: multi-center pulses crashing into each other ──
-            // Replaces the old single center flash. Uses the four drifting
-            // source points so wavefronts emerge from different places each
-            // beat and collide mid-screen. 'lighter' compositing brightens
-            // overlap regions — visible interference without going RGB.
-            if (mode === "isochronic" || mode === "both") {
-                const period    = 1 / emissionHz;              // seconds per beat
-                const beatPhase = (t % period) / period;       // 0..1
-                const maxR      = Math.min(W, H) * 0.48;
-                const sources   = [
-                    [isoS0x, isoS0y],
-                    [isoS1x, isoS1y],
-                    [isoS2x, isoS2y],
-                    [isoS3x, isoS3y],
-                ];
-                const driveVol  = playing ? vol + 0.15 : 0.25;
-
-                ctx.save();
+            // ── Compose: the picture, then glow ──
+            ctx.globalCompositeOperation = "source-over";
+            ctx.globalAlpha = 1;
+            ctx.drawImage(buf.c, 0, 0);
+            if (quality > 0) {
+                h2.x.drawImage(buf.c, 0, 0, h2.c.width, h2.c.height);
+                h4.x.drawImage(h2.c, 0, 0, h4.c.width, h4.c.height);
+                squareInto(s4, h4);
                 ctx.globalCompositeOperation = "lighter";
-
-                // Expanding rings — two staggered per source so there's always
-                // a fresh front and a trailing one, guaranteeing collisions.
-                ctx.lineWidth = 1.5;
-                for (let ring = 0; ring < 2; ring++) {
-                    const phase = (beatPhase + ring * 0.5) % 1;
-                    if (phase > 0.72) continue;                // fade tail
-                    const r = phase * maxR;
-                    const strokeA = (1 - phase / 0.72) * 0.38 * driveVol;
-                    if (strokeA < 0.02) continue;
-                    ctx.strokeStyle = `rgba(51, 255, 51, ${strokeA})`;
-                    for (let s = 0; s < sources.length; s++) {
-                        const sx = sources[s][0], sy = sources[s][1];
-                        ctx.beginPath();
-                        ctx.arc(sx, sy, r, 0, Math.PI * 2);
-                        ctx.stroke();
-                    }
+                addGain(s4.c, PHOSPHOR.bloom);
+                if (quality > 1) {
+                    h8.x.drawImage(h4.c, 0, 0, h8.c.width, h8.c.height);
+                    squareInto(s8, h8);
+                    addGain(s8.c, PHOSPHOR.halo);
                 }
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = "source-over";
+            }
 
-                // Nucleus flash — sharp bright pulse at each source on downbeat
-                if (beatPhase < 0.16 && playing) {
-                    const flashStr = (1 - beatPhase / 0.16) * 0.38 * (vol + 0.15);
-                    const rad = Math.min(W, H) * 0.22;
-                    for (let s = 0; s < sources.length; s++) {
-                        const sx = sources[s][0], sy = sources[s][1];
-                        const gr = ctx.createRadialGradient(sx, sy, 0, sx, sy, rad);
-                        gr.addColorStop(0,   `rgba(190, 255, 195, ${flashStr})`);
-                        gr.addColorStop(0.4, `rgba(51, 255, 51, ${flashStr * 0.45})`);
-                        gr.addColorStop(1,   "rgba(51, 255, 51, 0)");
-                        ctx.fillStyle = gr;
-                        ctx.fillRect(sx - rad, sy - rad, rad * 2, rad * 2);
-                    }
-                }
-
-                ctx.restore();
+            // If frames start taking too long (slow phone), drop the glow first, then some dots
+            workEma = workEma * 0.9 + (performance.now() - w0) * 0.1;
+            if (workEma > 18) {
+                if (quality > 0) quality--;
+                else if (lod > 0.45) lod -= 0.15;
+                workEma = 0;
             }
         };
 
-        draw();
+        animRef.current = requestAnimationFrame(draw);
         return ()=>cancelAnimationFrame(animRef.current);
     }, [beat, carrier, volume, playing, mode, ambient]);
 
