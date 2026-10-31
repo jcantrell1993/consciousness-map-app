@@ -14533,6 +14533,41 @@ function isoPulseCurve() {
     for(let i = 0; i < n; i++)curve[i] = smooth(smooth(i / (n - 1)));
     return curve;
 }
+// Join a loop's end to its start with an equal-power crossfade, so it repeats with no gap or click.
+// Returns src's samples as a loop of src.length - fade.
+function crossfadeLoop(src, fade) {
+    const out = src.slice(0, src.length - fade);
+    const tail = src.length - fade;
+    for(let i = 0; i < fade; i++)out[i] = src[i] * Math.sqrt(i / fade) + src[tail + i] * Math.sqrt(1 - i / fade);
+    return out;
+}
+// A recorded bed, ready to loop: the near-silence at each end of the file (up to half a second in
+// these MP3s) is cut, so it doesn't drop out at every repeat, and the ends are crossfaded.
+function seamlessLoop(ctx, buf) {
+    const chans = Array.from({ length: buf.numberOfChannels }, (_, c)=>buf.getChannelData(c));
+    let peak = 0;
+    for (const d of chans) for(let i = 0; i < d.length; i++)if (Math.abs(d[i]) > peak) peak = Math.abs(d[i]);
+    const floor = peak * 0.01;
+    const loud = (i)=>chans.some((d)=>Math.abs(d[i]) > floor);
+    let start = 0, end = buf.length;
+    while(start < end - 1 && !loud(start))start++;
+    while(end > start + 1 && !loud(end - 1))end--;
+    const fade = Math.min(Math.floor(buf.sampleRate * 1.5), Math.floor((end - start) / 4));
+    const out = ctx.createBuffer(chans.length, end - start - fade, buf.sampleRate);
+    chans.forEach((d, c)=>out.copyToChannel(crossfadeLoop(d.subarray(start, end), fade), c));
+    return out;
+}
+// Every bed sits at this RMS before the master volume (-26 dBFS, about 23 dB under a tone at full
+// level), so changing bed doesn't change how loud it is under the tones.
+const BED_RMS = 0.05;
+function bedGain(buf) {
+    let sum = 0, n = 0;
+    for(let c = 0; c < buf.numberOfChannels; c++){
+        const d = buf.getChannelData(c);
+        for(let i = 0; i < d.length; i += 4, n++)sum += d[i] * d[i];
+    }
+    return BED_RMS / Math.max(Math.sqrt(sum / n), 0.001);
+}
 class AudioEngine {
     ensureCtx() {
         // "playback" = larger output buffers: fewer dropouts over Bluetooth, less battery.
@@ -14600,7 +14635,7 @@ class AudioEngine {
                 const resp = await fetch(url);
                 if (!resp.ok) continue;
                 const arrayBuf = await resp.arrayBuffer();
-                const audioBuf = await ctx.decodeAudioData(arrayBuf);
+                const audioBuf = seamlessLoop(ctx, await ctx.decodeAudioData(arrayBuf));
                 this.audioCache[key] = audioBuf;
                 return audioBuf;
             } catch  {}
@@ -14705,32 +14740,37 @@ class AudioEngine {
         }
         return buf;
     }
-    // Simple colored noise buffer for pink/brown
+    // Colored noise for pink/brown: a different take in each ear, long enough not to be heard
+    // repeating, and crossfaded where it loops
     genNoise(type) {
         const ctx = this.ctx;
         const sr = ctx.sampleRate;
-        const len = sr * 4;
-        const buf = ctx.createBuffer(1, len, sr);
-        const d = buf.getChannelData(0);
-        if (type === "pink") {
-            let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-            for(let i = 0; i < len; i++){
-                const w = Math.random() * 2 - 1;
-                b0 = 0.99886 * b0 + w * 0.0555179;
-                b1 = 0.99332 * b1 + w * 0.0750759;
-                b2 = 0.969 * b2 + w * 0.153852;
-                b3 = 0.8665 * b3 + w * 0.3104856;
-                b4 = 0.55 * b4 + w * 0.5329522;
-                b5 = -0.7616 * b5 - w * 0.016898;
-                d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.04;
-                b6 = w * 0.115926;
+        const fade = sr;
+        const len = sr * 16 + fade;
+        const buf = ctx.createBuffer(2, len - fade, sr);
+        for(let ch = 0; ch < 2; ch++){
+            const d = new Float32Array(len);
+            if (type === "pink") {
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for(let i = 0; i < len; i++){
+                    const w = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + w * 0.0555179;
+                    b1 = 0.99332 * b1 + w * 0.0750759;
+                    b2 = 0.969 * b2 + w * 0.153852;
+                    b3 = 0.8665 * b3 + w * 0.3104856;
+                    b4 = 0.55 * b4 + w * 0.5329522;
+                    b5 = -0.7616 * b5 - w * 0.016898;
+                    d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.04;
+                    b6 = w * 0.115926;
+                }
+            } else {
+                let last = 0;
+                for(let i = 0; i < len; i++){
+                    last = (last + 0.02 * (Math.random() * 2 - 1)) * 0.999;
+                    d[i] = last * 0.8;
+                }
             }
-        } else {
-            let last = 0;
-            for(let i = 0; i < len; i++){
-                last = (last + 0.02 * (Math.random() * 2 - 1)) * 0.999;
-                d[i] = last * 0.8;
-            }
+            buf.copyToChannel(crossfadeLoop(d, fade), ch);
         }
         return buf;
     }
@@ -15226,8 +15266,14 @@ class AudioEngine {
         subNoise.start();
         } // end desktop-only ocean layers
     }
+    // Bring a bed in gently rather than starting it at full level
+    _fadeBed(gain, level) {
+        const t = this.ctx.currentTime;
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(level, t + 1.2);
+    }
     startAmbient() {
-        this.stopAmbient();
+        this.stopAmbient(0.6);
         if (!this.ctx || !this.master || this._ambType === "none") return;
         const ctx = this.ctx;
         if (this._ambType === "rain" || this._ambType === "ocean") {
@@ -15239,7 +15285,7 @@ class AudioEngine {
             const cached = this.audioCache[key];
             if (cached) {
                 // Already loaded — play immediately
-                this.ambGain.gain.value = 0.35;
+                this._fadeBed(this.ambGain, bedGain(cached));
                 this.ambNode = ctx.createBufferSource();
                 this.ambNode.buffer = cached;
                 this.ambNode.loop = true;
@@ -15247,17 +15293,17 @@ class AudioEngine {
                 this.ambNode.start();
             } else {
                 // Start synthesis immediately while fetch is in progress
-                this.ambGain.gain.value = 0.9;
+                this._fadeBed(this.ambGain, 0.9);
                 if (key === "rain") this.startRain(ctx, this.ambGain);
                 else this.startOcean(ctx, this.ambGain);
                 // Attempt to fetch real audio and crossfade to it
                 this.fetchAudio(key).then((buf)=>{
                     if (!buf || this._ambType !== key || !this.master) return;
-                    // Swap: stop synthesis nodes, start real audio
-                    this.stopAmbient();
+                    // Swap: crossfade from the synthesis to the real audio
+                    this.stopAmbient(1.2);
                     if (!this.ctx || !this.master) return;
                     this.ambGain = this.ctx.createGain();
-                    this.ambGain.gain.value = 0.35;
+                    this._fadeBed(this.ambGain, bedGain(buf));
                     this._connectAmbGain(this.ambGain, key);
                     this.ambNode = this.ctx.createBufferSource();
                     this.ambNode.buffer = buf;
@@ -15269,7 +15315,7 @@ class AudioEngine {
         } else {
             const buf = this.genNoise(this._ambType);
             this.ambGain = ctx.createGain();
-            this.ambGain.gain.value = 0.15;
+            this._fadeBed(this.ambGain, bedGain(buf));
             this._connectAmbGain(this.ambGain, this._ambType);
             this.ambNode = ctx.createBufferSource();
             this.ambNode.buffer = buf;
@@ -15278,27 +15324,38 @@ class AudioEngine {
             this.ambNode.start();
         }
     }
-    stopAmbient() {
-        // Stop buffer-based ambient
-        try {
-            this.ambNode?.stop();
-        } catch  {}
-        this.ambNode?.disconnect();
+    // Stops the current bed, after a fade when `fade` seconds are given (a hard stop clicks)
+    stopAmbient(fade = 0) {
+        const { ambNode, ambNodes, ambGain, ambPanner } = this;
         this.ambNode = null;
-        // Stop all real-time ambient nodes (rain/ocean layers)
-        for (const n of this.ambNodes){
-            try {
-                if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop();
-            } catch  {}
-            try {
-                n.disconnect();
-            } catch  {}
-        }
         this.ambNodes = [];
-        this.ambGain?.disconnect();
         this.ambGain = null;
-        this.ambPanner?.disconnect();
         this.ambPanner = null;
+        const finish = ()=>{
+            // Stop buffer-based ambient
+            try {
+                ambNode?.stop();
+            } catch  {}
+            ambNode?.disconnect();
+            // Stop all real-time ambient nodes (rain/ocean layers)
+            for (const n of ambNodes){
+                try {
+                    if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop();
+                } catch  {}
+                try {
+                    n.disconnect();
+                } catch  {}
+            }
+            ambGain?.disconnect();
+            ambPanner?.disconnect();
+        };
+        if (fade > 0 && ambGain && this.ctx) {
+            const t = this.ctx.currentTime;
+            ambGain.gain.cancelScheduledValues(t);
+            ambGain.gain.setValueAtTime(ambGain.gain.value, t);
+            ambGain.gain.linearRampToValueAtTime(0, t + fade);
+            setTimeout(finish, (fade + 0.1) * 1000);
+        } else finish();
     }
     setAmbient(t) {
         this._ambType = t;
@@ -16827,7 +16884,7 @@ function logWriteJson(key, value) {
     } catch  {}
 }
 function logDownload(name, text, type) {
-    const url = URL.createObjectURL(new Blob([text], { type: type || "text/markdown" }));
+    const url = URL.createObjectURL(text instanceof Blob ? text : new Blob([text], { type: type || "text/markdown" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = name;
@@ -16850,6 +16907,9 @@ function logGuessTechnique(log, prevLogs) {
 function logFileStamp(l) {
     const d = new Date(l.startedAt);
     return `${d.getFullYear()}-${logPad(d.getMonth() + 1)}-${logPad(d.getDate())}-${logPad(d.getHours())}${logPad(d.getMinutes())}`;
+}
+function voiceFileName(l, v) {
+    return `${logFileStamp(l)}-voice-${logClock(v.t).replace(":", "")}.${(v.mime || "").includes("mp4") ? "m4a" : "webm"}`;
 }
 function logToMarkdown(l) {
     const d = new Date(l.startedAt);
@@ -16882,6 +16942,7 @@ function logToMarkdown(l) {
         } else if (i > 0 && l.stimulus[i - 1].snap) events.push({ t: s.t, text: "Audio stopped" });
     });
     l.markers.forEach((m)=>events.push({ t: m.t, text: logMarkerLabel(m.type) }));
+    (l.voice || []).forEach((v)=>events.push({ t: v.t, text: `Voice note (${v.secs}s): ${voiceFileName(l, v)}` }));
     events.sort((a, b)=>a.t - b.t);
     if (!events.length) out.push("(no events logged)");
     events.forEach((e)=>out.push(`- ${logClock(e.t)} — ${e.text}`));
@@ -16960,11 +17021,32 @@ function useSessionLog(stim) {
     const updateNote = _react.useCallback((id, patch)=>{
         setLogs((ls)=>ls.map((l)=>l.id === id ? { ...l, note: { ...l.note, ...patch } } : l));
     }, []);
+    // A voice note goes on the open log, else on a log that ended in the last half hour (you often
+    // speak just after a session), else on an entry of its own.
+    const addVoice = _react.useCallback(({ id, startedAt, secs, mime })=>{
+        if (activeRef.current) {
+            setActive((a)=>a ? { ...a, voice: [...(a.voice || []), { id, t: Math.max(0, Math.round((startedAt - a.startedAt) / 1000)), secs, mime }] } : a);
+            return;
+        }
+        setLogs((ls)=>{
+            const last = ls[0];
+            if (last && startedAt - last.endedAt < 1800000) return [{ ...last, voice: [...(last.voice || []), { id, t: Math.round((startedAt - last.startedAt) / 1000), secs, mime }] }, ...ls.slice(1)];
+            return [{ id: String(startedAt), startedAt, endedAt: startedAt + secs * 1000, markers: [], stimulus: [], voice: [{ id, t: 0, secs, mime }], note: { technique: "Voice note", preState: "", what: "", depth: "", ended: "", next: "", checks: {} } }, ...ls];
+        });
+    }, []);
+    const deleteVoice = _react.useCallback((logId, id)=>{
+        setLogs((ls)=>ls.map((l)=>l.id === logId ? { ...l, voice: (l.voice || []).filter((v)=>v.id !== id) } : l));
+        voiceDelete(id).catch(()=>{});
+    }, []);
     const deleteLog = _react.useCallback((id)=>{
-        setLogs((ls)=>ls.filter((l)=>l.id !== id));
+        setLogs((ls)=>{
+            const gone = ls.find((l)=>l.id === id);
+            ((gone && gone.voice) || []).forEach((v)=>voiceDelete(v.id).catch(()=>{}));
+            return ls.filter((l)=>l.id !== id);
+        });
         setEditingId((e)=>e === id ? null : e);
     }, []);
-    return { active, logs, editingId, setEditingId, startLog, endLog, addMarker, undoMarker, updateNote, deleteLog };
+    return { active, logs, editingId, setEditingId, startLog, endLog, addMarker, undoMarker, updateNote, deleteLog, addVoice, deleteVoice };
 }
 // Keeps the screen on while audio plays or a log is open (Android otherwise sleeps the
 // screen and may throttle the page). Needs HTTPS; re-acquired when the page returns.
@@ -17004,11 +17086,204 @@ function useWakeLock(want) {
     }, [want, supported]);
     return { held, supported, failed };
 }
+/* Voice notes: hold to speak, on waking or any other time. Off until switched on in the log view, so
+   the microphone permission is asked in the light rather than in the dark. Clips stay in this
+   browser's IndexedDB; nothing is uploaded or transcribed. */
+const VOICE_KEY = "cmap.voice.v1";
+const VOICE_HOLD_MS = 900;
+const VOICE_MAX_MS = 600000;
+const voiceStore = (mode, fn)=>new Promise((res, rej)=>{
+        const open = indexedDB.open("cmap.voice", 1);
+        open.onupgradeneeded = ()=>open.result.createObjectStore("clips");
+        open.onerror = ()=>rej(open.error);
+        open.onsuccess = ()=>{
+            const db = open.result;
+            const tx = db.transaction("clips", mode);
+            const q = fn(tx.objectStore("clips"));
+            tx.oncomplete = ()=>{
+                db.close();
+                res(q.result);
+            };
+            tx.onerror = tx.onabort = ()=>{
+                db.close();
+                rej(tx.error);
+            };
+        };
+    });
+const voicePut = (id, blob)=>voiceStore("readwrite", (s)=>s.put(blob, id));
+const voiceGet = (id)=>voiceStore("readonly", (s)=>s.get(id));
+const voiceDelete = (id)=>voiceStore("readwrite", (s)=>s.delete(id));
+// No call-style processing: asking for it can move the phone into its call audio mode.
+const VOICE_AUDIO = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 };
+// Prefer the phone's own microphone. A Bluetooth headset's mic would drop the headphones from stereo
+// to low-quality mono call audio, which would end the binaural effect while recording.
+function pickVoiceMic(devices) {
+    const inputs = devices.filter((d)=>d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications");
+    const local = inputs.filter((d)=>!/bluetooth|hands-?free|soundcore|q30|wireless|buds|airpod/i.test(d.label));
+    return local.find((d)=>/speaker|built|internal|bottom|phone/i.test(d.label)) || local[0] || null;
+}
+function useVoiceCapture(log) {
+    const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder && window.indexedDB);
+    const [cfg, setCfg] = _react.useState(()=>logReadJson(VOICE_KEY, null));
+    const [recording, setRecording] = _react.useState(0);
+    const [status, setStatus] = _react.useState("");
+    const rec = _react.useRef(null);
+    // A result line shouldn't sit on the dark screen for the rest of the night
+    _react.useEffect(()=>{
+        if (!status) return;
+        const id = setTimeout(()=>setStatus(""), 6000);
+        return ()=>clearTimeout(id);
+    }, [status]);
+    const buzz = ()=>{
+        try {
+            if (navigator.vibrate) navigator.vibrate(30);
+        } catch  {}
+    };
+    const enable = async ()=>{
+        try {
+            const probe = await navigator.mediaDevices.getUserMedia({ audio: VOICE_AUDIO });
+            probe.getTracks().forEach((t)=>t.stop());
+            const mic = pickVoiceMic(await navigator.mediaDevices.enumerateDevices());
+            const next = { micId: mic ? mic.deviceId : "" };
+            logWriteJson(VOICE_KEY, next);
+            setCfg(next);
+            setStatus("");
+            if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+        } catch  {
+            setStatus("MICROPHONE BLOCKED — ALLOW IT IN SITE SETTINGS");
+        }
+    };
+    const disable = ()=>{
+        logWriteJson(VOICE_KEY, null);
+        setCfg(null);
+        setStatus("");
+    };
+    const end = ()=>{
+        const r = rec.current;
+        if (!r) return;
+        clearTimeout(r.cap);
+        if (r.mr) {
+            if (r.mr.state !== "inactive") r.mr.stop();
+        } else r.cancelled = true;
+    };
+    const begin = async ()=>{
+        if (!cfg || rec.current) return;
+        const r = { chunks: [], cancelled: false };
+        rec.current = r;
+        buzz();
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: { ...VOICE_AUDIO, ...(cfg.micId ? { deviceId: { ideal: cfg.micId } } : {}) } });
+            if (r.cancelled) {
+                stream.getTracks().forEach((t)=>t.stop());
+                rec.current = null;
+                return;
+            }
+            const mic = stream.getAudioTracks()[0]?.label || "";
+            const mimeType = ["audio/webm;codecs=opus", "audio/mp4"].find((m)=>MediaRecorder.isTypeSupported(m));
+            r.mr = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 32000 });
+            r.mr.ondataavailable = (e)=>{
+                if (e.data.size) r.chunks.push(e.data);
+            };
+            r.mr.onstop = async ()=>{
+                stream.getTracks().forEach((t)=>t.stop());
+                rec.current = null;
+                setRecording(0);
+                const secs = Math.round((Date.now() - r.startedAt) / 1000);
+                if (Date.now() - r.startedAt < 700) return setStatus("TOO SHORT — NOT SAVED");
+                const mime = r.mr.mimeType || mimeType || "audio/webm";
+                const id = String(r.startedAt);
+                try {
+                    await voicePut(id, new Blob(r.chunks, { type: mime }));
+                    log.addVoice({ id, startedAt: r.startedAt, secs, mime });
+                    buzz();
+                    setStatus(`SAVED ${secs}S${mic ? " · " + mic.toUpperCase() : ""}`);
+                } catch  {
+                    setStatus("NOT SAVED — BROWSER STORAGE IS FULL");
+                }
+            };
+            r.mr.start();
+            r.startedAt = Date.now();
+            r.cap = setTimeout(end, VOICE_MAX_MS);
+            setRecording(r.startedAt);
+            setStatus("");
+        } catch  {
+            rec.current = null;
+            setStatus("COULD NOT START THE MICROPHONE");
+        }
+    };
+    return { supported, on: supported && !!cfg, recording, status, enable, disable, begin, end };
+}
+// Press handlers for anything that can be held to speak. A short tap still acts as a normal tap;
+// the click that ends a hold is swallowed, so a hold on a marker doesn't also drop that marker.
+function useVoiceHold(voice) {
+    const timer = _react.useRef(0);
+    const held = _react.useRef(false);
+    const swallow = _react.useRef(false);
+    const release = ()=>{
+        clearTimeout(timer.current);
+        if (held.current) {
+            held.current = false;
+            swallow.current = true;
+            voice.end();
+        }
+    };
+    return {
+        onPointerDown: (e)=>{
+            if (!voice.on || !e.isPrimary) return;
+            swallow.current = false;
+            timer.current = setTimeout(()=>{
+                held.current = true;
+                voice.begin();
+            }, VOICE_HOLD_MS);
+        },
+        onPointerUp: release,
+        onPointerCancel: release,
+        onClickCapture: (e)=>{
+            if (swallow.current) {
+                swallow.current = false;
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        },
+        onContextMenu: (e)=>{
+            if (voice.on) e.preventDefault();
+        }
+    };
+}
+function VoiceButton({ voice }) {
+    const hold = useVoiceHold(voice);
+    if (!voice.on) return null;
+    return lh("button", { ...hold, className: "cmd" + (voice.recording ? " warn" : ""), style: { touchAction: "none", userSelect: "none", WebkitUserSelect: "none" } }, voice.recording ? "● RECORDING — RELEASE TO SAVE" : "● HOLD TO SPEAK");
+}
+// The switch and status line in the log view
+function VoiceControls({ voice }) {
+    if (!voice.supported) return lh("div", { style: { color: "#33ff338b", fontSize: "13px", marginBottom: "10px" } }, "VOICE NOTES ARE NOT AVAILABLE IN THIS BROWSER.");
+    return lh("div", { style: { marginBottom: "10px" } }, lh(LogBtn, { label: `VOICE NOTES: ${voice.on ? "ON" : "OFF"}`, active: voice.on, onClick: voice.on ? voice.disable : voice.enable }), lh(VoiceButton, { voice }), lh("div", { style: { color: "#33ff338b", fontSize: "13px" } }, voice.status || (voice.on ? "▸ HOLD ANYWHERE IN DIM MODE FOR A SECOND, THEN SPEAK. RELEASE TO SAVE." : "▸ OPTIONAL. ASKS FOR THE MICROPHONE WHEN SWITCHED ON. RECORDINGS STAY ON THIS PHONE.")));
+}
+// Saved notes on a logged session: play, save a copy, delete
+function VoiceNotes({ log, entry }) {
+    const play = async (v)=>{
+        const blob = await voiceGet(v.id);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const el = new Audio(url);
+        el.onended = ()=>URL.revokeObjectURL(url);
+        el.play().catch(()=>{});
+    };
+    const save = async (v)=>{
+        const blob = await voiceGet(v.id);
+        if (blob) logDownload(voiceFileName(entry, v), blob, v.mime);
+    };
+    return lh("div", null, (entry.voice || []).map((v)=>lh("div", { key: v.id, style: { color: "#33ff33ac", fontSize: "13px", marginTop: "4px" } }, `VOICE @ ${logClock(v.t)} · ${v.secs}S `, lh(LogBtn, { label: "▶ PLAY", onClick: ()=>play(v) }), lh(LogBtn, { label: "SAVE", onClick: ()=>save(v) }), lh(LogBtn, { label: "DELETE", warn: true, onClick: ()=>{
+                if (window.confirm("Delete this voice note? This cannot be undone.")) log.deleteVoice(entry.id, v.id);
+            } }))));
+}
 // Pure-black full-screen mode for lying in the dark. On an OLED panel black pixels are off.
 // While a log is open the whole screen becomes a 3x3 grid of large marker targets, so marks
 // can be dropped by position with eyes closed.
-function DimOverlay({ log, onExit }) {
+function DimOverlay({ log, voice, onExit }) {
     const a = log.active;
+    const hold = useVoiceHold(voice);
     const [now, setNow] = _react.useState(Date.now());
     _react.useEffect(()=>{
         const id = setInterval(()=>setNow(Date.now()), 1000);
@@ -17016,7 +17291,7 @@ function DimOverlay({ log, onExit }) {
     }, []);
     const lastM = a && a.markers[a.markers.length - 1];
     const faint = "#1c5a1c";
-    return lh("div", { style: { position: "fixed", inset: 0, zIndex: 1000, background: "#000", display: "flex", flexDirection: "column", touchAction: "manipulation", userSelect: "none" } }, lh("button", {
+    return lh("div", { ...hold, style: { position: "fixed", inset: 0, zIndex: 1000, background: "#000", display: "flex", flexDirection: "column", touchAction: voice.on ? "none" : "manipulation", userSelect: "none", WebkitUserSelect: "none" } }, (voice.recording || voice.status) ? lh("div", { style: { position: "absolute", left: 0, right: 0, top: "50%", textAlign: "center", color: voice.recording ? "#7a5200" : faint, fontSize: "13px", pointerEvents: "none" } }, voice.recording ? `● RECORDING ${logClock(Math.max(0, Math.floor((now - voice.recording) / 1000)))}` : voice.status) : (!a && voice.on ? lh("div", { style: { position: "absolute", left: 0, right: 0, top: "50%", textAlign: "center", color: "#0f2f0f", fontSize: "13px", pointerEvents: "none" } }, "HOLD TO SPEAK") : null), lh("button", {
         onClick: onExit,
         style: { flex: "0 0 56px", color: faint, background: "transparent", border: "none", borderBottom: "1px solid #0b200b", fontSize: "13px", textAlign: "left", padding: "0 16px", cursor: "pointer" }
     }, a ? `● ${logClock(Math.max(0, Math.floor((now - a.startedAt) / 1000)))}${lastM ? "  ·  LAST: " + logMarkerLabel(lastM.type) + " @ " + logClock(lastM.t) : ""}   TAP: EXIT` : "TAP HERE TO EXIT DIM"), a && lh("div", { style: { flex: 1, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gridTemplateRows: "repeat(3, 1fr)", gap: "2px", padding: "2px" } }, LOG_MARKERS.map((m)=>lh("button", {
@@ -17067,23 +17342,23 @@ function LogEditor({ log, entry }) {
     const mins = Math.max(1, Math.round((entry.endedAt - entry.startedAt) / 60000));
     return lh("div", { style: { border: "1px solid #33ff3340", padding: "10px", marginBottom: "12px" } }, lh("div", { style: { color: "#33ff33", marginBottom: "8px" } }, `FIELD NOTE — ${new Date(entry.startedAt).toLocaleString()} — ~${mins} MIN`), lh(LogField, { label: "TECHNIQUE / CONTEXT" }, lh("input", { type: "text", value: n.technique || "", onChange: (e)=>set({ technique: e.target.value }), style: logInputStyle })), lh(LogField, { label: "PRE-STATE (BODY, MIND, WHAT YOU BROUGHT IN)" }, lh("textarea", { rows: 2, value: n.preState || "", onChange: (e)=>set({ preState: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHAT HAPPENED (CAPTURE THE TEXTURE FIRST)" }, lh("textarea", { rows: 6, value: n.what || "", onChange: (e)=>set({ what: e.target.value }), style: logInputStyle })), lh(LogField, { label: "SELF-RATED DEPTH" }, LOG_DEPTHS.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.depth === id, onClick: ()=>set({ depth: n.depth === id ? "" : id }) }))), lh(LogField, { label: "PHENOMENA (PRE-CHECKED FROM YOUR MARKS)" }, LOG_CHECKS.map(([k, label])=>lh(LogBtn, { key: k, label: label.split(" (")[0].toUpperCase(), active: !!(n.checks && n.checks[k]), onClick: ()=>set({ checks: { ...n.checks, [k]: !(n.checks && n.checks[k]) } }) }))), lh(LogField, { label: "WHAT STOPPED IT / HOW IT ENDED" }, lh("textarea", { rows: 2, value: n.ended || "", onChange: (e)=>set({ ended: e.target.value }), style: logInputStyle })), lh(LogField, { label: "NOTES FOR NEXT SESSION" }, lh("textarea", { rows: 2, value: n.next || "", onChange: (e)=>set({ next: e.target.value }), style: logInputStyle })), lh(LogBtn, { label: "SAVE & CLOSE", onClick: ()=>log.setEditingId(null) }), lh(LogBtn, { label: "DOWNLOAD .MD", onClick: ()=>logDownload(`${logFileStamp(entry)}.md`, logToMarkdown(entry)) }));
 }
-function LogPanel({ log }) {
+function LogPanel({ log, voice }) {
     const day = 86400000;
     const real = log.logs.filter((l)=>l.endedAt - l.startedAt >= 120000);
     const within = (d)=>real.filter((l)=>Date.now() - l.startedAt < d * day).length;
     const held = (d)=>real.filter((l)=>Date.now() - l.startedAt < d * day && (l.note?.depth === "f10held" || l.note?.depth === "f12")).length;
     const editing = log.logs.find((l)=>l.id === log.editingId);
     const stat = (label, val)=>lh("span", { style: { marginRight: "18px" } }, `${label}: `, lh("span", { className: "glow-subtle" }, val));
-    return lh(LogFrame, { title: "SESSION LOG" }, lh("div", { style: { color: "#33ff33ac", marginBottom: "10px", lineHeight: "1.7" } }, stat("LAST 7 DAYS", within(7)), stat("LAST 30 DAYS", within(30)), stat("F10 HELD (30D)", held(30)), stat("TOTAL", real.length)), log.active ? lh("div", { style: { color: "#ffaa00", marginBottom: "10px" } }, "▸ LOG OPEN — MARK WITH 1-9 DURING THE SESSION, THEN ■ END LOG TO WRITE THE NOTE.") : lh("div", { style: { color: "#33ff338b", marginBottom: "10px", fontSize: "13px" } }, "▸ PRESS ● LOG BEFORE YOU LIE DOWN — WORKS WITH APP AUDIO OR AN EXTERNAL TAPE.", lh("br"), "▸ MARKS ARE TIMESTAMPED. AFTERWARD, FILL IN THE NOTE WHILE IT IS FRESH."), editing && lh(LogEditor, { log, entry: editing }), log.logs.length === 0 && lh("div", { style: { color: "#33ff3380" } }, "NO SESSIONS LOGGED YET."), log.logs.map((l)=>{
+    return lh(LogFrame, { title: "SESSION LOG" }, lh("div", { style: { color: "#33ff33ac", marginBottom: "10px", lineHeight: "1.7" } }, stat("LAST 7 DAYS", within(7)), stat("LAST 30 DAYS", within(30)), stat("F10 HELD (30D)", held(30)), stat("TOTAL", real.length)), log.active ? lh("div", { style: { color: "#ffaa00", marginBottom: "10px" } }, "▸ LOG OPEN — MARK WITH 1-9 DURING THE SESSION, THEN ■ END LOG TO WRITE THE NOTE.") : lh("div", { style: { color: "#33ff338b", marginBottom: "10px", fontSize: "13px" } }, "▸ PRESS ● LOG BEFORE YOU LIE DOWN — WORKS WITH APP AUDIO OR AN EXTERNAL TAPE.", lh("br"), "▸ MARKS ARE TIMESTAMPED. AFTERWARD, FILL IN THE NOTE WHILE IT IS FRESH."), lh(VoiceControls, { voice }), editing && lh(LogEditor, { log, entry: editing }), log.logs.length === 0 && lh("div", { style: { color: "#33ff3380" } }, "NO SESSIONS LOGGED YET."), log.logs.map((l)=>{
         const mins = Math.max(1, Math.round((l.endedAt - l.startedAt) / 60000));
         const counts = {};
         l.markers.forEach((m)=>counts[m.type] = (counts[m.type] || 0) + 1);
         const summary = Object.entries(counts).map(([t, c])=>`${logMarkerLabel(t)}${c > 1 ? "×" + c : ""}`).join(" · ");
         const d = new Date(l.startedAt);
-        return lh("div", { key: l.id, style: { borderTop: "1px solid #33ff3315", padding: "6px 0" } }, lh("div", { style: { color: "#33ff33", display: "flex", justifyContent: "space-between", flexWrap: "wrap" } }, lh("span", null, `${d.getFullYear()}-${logPad(d.getMonth() + 1)}-${logPad(d.getDate())} ${logPad(d.getHours())}:${logPad(d.getMinutes())} · ${mins}MIN`), lh("span", { style: { color: "#33ff33ac" } }, logDepthLabel(l.note?.depth) || "—")), lh("div", { style: { color: "#33ff3396", fontSize: "13px" } }, l.note?.technique || ""), summary && lh("div", { style: { color: "#33ff338b", fontSize: "12px" } }, summary), lh("div", { style: { marginTop: "4px" } }, lh(LogBtn, { label: "EDIT", onClick: ()=>log.setEditingId(l.id) }), lh(LogBtn, { label: ".MD", onClick: ()=>logDownload(`${logFileStamp(l)}.md`, logToMarkdown(l)) }), lh(LogBtn, { label: "DELETE", warn: true, onClick: ()=>{
+        return lh("div", { key: l.id, style: { borderTop: "1px solid #33ff3315", padding: "6px 0" } }, lh("div", { style: { color: "#33ff33", display: "flex", justifyContent: "space-between", flexWrap: "wrap" } }, lh("span", null, `${d.getFullYear()}-${logPad(d.getMonth() + 1)}-${logPad(d.getDate())} ${logPad(d.getHours())}:${logPad(d.getMinutes())} · ${mins}MIN`), lh("span", { style: { color: "#33ff33ac" } }, logDepthLabel(l.note?.depth) || "—")), lh("div", { style: { color: "#33ff3396", fontSize: "13px" } }, l.note?.technique || ""), summary && lh("div", { style: { color: "#33ff338b", fontSize: "12px" } }, summary), lh(VoiceNotes, { log, entry: l }), lh("div", { style: { marginTop: "4px" } }, lh(LogBtn, { label: "EDIT", onClick: ()=>log.setEditingId(l.id) }), lh(LogBtn, { label: ".MD", onClick: ()=>logDownload(`${logFileStamp(l)}.md`, logToMarkdown(l)) }), lh(LogBtn, { label: "DELETE", warn: true, onClick: ()=>{
                 if (window.confirm("Delete this logged session? This cannot be undone.")) log.deleteLog(l.id);
             } })));
-    }), log.logs.length > 0 && lh("div", { style: { borderTop: "1px solid #33ff3315", paddingTop: "8px", marginTop: "4px" } }, lh(LogBtn, { label: "EXPORT ALL — BACKUP .JSON", onClick: ()=>logDownload(`consciousness-map-log-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(log.logs, null, 2), "application/json") }), lh("div", { style: { color: "#33ff3380", fontSize: "12px" } }, "LOGS LIVE IN THIS BROWSER ONLY. EXPORT OFTEN — CLEARING SITE DATA ERASES THEM.")));
+    }), log.logs.length > 0 && lh("div", { style: { borderTop: "1px solid #33ff3315", paddingTop: "8px", marginTop: "4px" } }, lh(LogBtn, { label: "EXPORT ALL — BACKUP .JSON", onClick: ()=>logDownload(`consciousness-map-log-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(log.logs, null, 2), "application/json") }), lh("div", { style: { color: "#33ff3380", fontSize: "12px" } }, "LOGS LIVE IN THIS BROWSER ONLY. EXPORT OFTEN — CLEARING SITE DATA ERASES THEM. VOICE NOTES ARE NOT IN THE BACKUP: SAVE EACH ONE.")));
 }
 /* ═══════════════════════════════════════════════════════════
    LANTERN-1 CONSOLE — the boot screen's look and voice on the main screen:
@@ -17273,6 +17548,7 @@ function Terminal() {
         ambient,
         om: omOn
     });
+    const voice = useVoiceCapture(log);
     const wake = useWakeLock(playing || log.active || dim);
     // Once something has played, the voice greets the end of it differently from a fresh start
     const [hasPlayed, setHasPlayed] = (0, _react.useState)(false);
@@ -17432,7 +17708,7 @@ function Terminal() {
         ["log", "LOG"],
         ["custom", "CUSTOM"]
     ];
-    return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: saying.text, src: saying.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
+    return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, voice, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: saying.text, src: saying.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
         beat,
         playing,
         width: IS_MOBILE ? Math.min(38, Math.floor((window.innerWidth - 40) / 9)) : 58
@@ -17443,7 +17719,7 @@ function Terminal() {
             log.endLog();
             setView("log");
         }
-    }), lh(Cmd, { label: "◐ DIM", onClick: ()=>setDim(true) }), lh("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginLeft: "6px" } }, lh("span", { className: "ctl-label", style: { margin: 0 } }, "VOL"), lh("input", {
+    }), lh(Cmd, { label: "◐ DIM", onClick: ()=>setDim(true) }), lh(VoiceButton, { voice }), lh("div", { style: { display: "flex", alignItems: "center", gap: "8px", marginLeft: "6px" } }, lh("span", { className: "ctl-label", style: { margin: 0 } }, "VOL"), lh("input", {
         type: "range",
         min: "0",
         max: "100",
@@ -17570,7 +17846,7 @@ function Terminal() {
             setActiveName("CUSTOM " + beat.toFixed(1) + "HZ");
             startAudio(beat, carrier);
         }
-    })), view === "log" && lh(LogPanel, { log }), lh("div", { style: { marginTop: "26px", paddingTop: "8px", borderTop: "1px solid rgba(51,255,51,0.15)", fontSize: "12px", letterSpacing: "0.08em", color: "rgba(51,255,51,0.54)" } }, `LANTERN-1 · CONSCIOUSNESS MAP · ${new Date().getFullYear()} · ALL SYSTEMS NOMINAL`)));
+    })), view === "log" && lh(LogPanel, { log, voice }), lh("div", { style: { marginTop: "26px", paddingTop: "8px", borderTop: "1px solid rgba(51,255,51,0.15)", fontSize: "12px", letterSpacing: "0.08em", color: "rgba(51,255,51,0.54)" } }, `LANTERN-1 · CONSCIOUSNESS MAP · ${new Date().getFullYear()} · ALL SYSTEMS NOMINAL`)));
 }
 function App() {
     const [booted, setBooted] = (0, _react.useState)(false);

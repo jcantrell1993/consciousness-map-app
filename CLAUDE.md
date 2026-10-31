@@ -41,6 +41,8 @@ Search by name. Line numbers are approximate, as of commit fbe0b22.
 | `DepthScope` | 16252 | the radar/sonar canvas |
 | `BootSequence` | 16433 | the LANTERN-1 boot script; any key or tap skips it |
 | `LOG_KEY`, `logToMarkdown`, `useSessionLog` | 16737-16848 | session log in localStorage. The .md export mirrors `field-notes/template.md` in the notes repo, so change them together |
+| `useVoiceCapture`, `useVoiceHold`, `pickVoiceMic` | search | optional hold-to-speak notes, stored in IndexedDB. Prefers the phone's mic, because a Bluetooth headset's mic can drop the headphones to mono call audio |
+| `seamlessLoop`, `crossfadeLoop`, `bedGain` | search | make beds loop with no gap and sit at one level (`BED_RMS`) |
 | `useWakeLock` | 16928 | screen wake lock |
 | `Terminal` | 17162 | the console: views, readout, commands |
 
