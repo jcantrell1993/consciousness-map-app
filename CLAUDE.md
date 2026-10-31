@@ -22,6 +22,8 @@ offline fallback). Work on a branch, merge to `main` when it is finished, and co
   rAF and cAF to timers before the app mounts, and test at phone width (412x915).
 - Audio checks: tap the output through the `BaseAudioContext.prototype` `destination` getter. An
   `AnalyserNode` hides channel separation unless `smoothingTimeConstant` is 0.
+- Phone audio checks: open the app with `?diag` for an on-screen readout of each AudioContext's state
+  and underruns. Stutter with no underruns counted is further along, in the Bluetooth link.
 
 ## Where things are in index.html
 
