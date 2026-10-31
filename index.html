@@ -3281,6 +3281,30 @@ input[type="range"]::-moz-range-thumb {
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brainwave Entrainment — Consciousness Map</title>
+    <script>
+// Audio diagnostics: open the app with ?diag to show each AudioContext's state and underruns on
+// screen. Underruns are the browser failing to deliver audio in time; a stutter with none counted
+// is happening further along, in the Bluetooth link.
+if (/[?&]diag\b/.test(location.search)) {
+    const Native = window.AudioContext, seen = [];
+    window.AudioContext = class extends Native {
+        constructor(o) {
+            super(o);
+            seen.push({ ctx: this, hint: (o && o.latencyHint) || "interactive" });
+        }
+    };
+    const box = document.createElement("pre");
+    box.style.cssText = "position:fixed;left:0;right:0;bottom:0;z-index:100000;margin:0;padding:6px 8px;font:11px monospace;color:#ff0;background:#000c;pointer-events:none;white-space:pre-wrap";
+    setInterval(()=>{
+        if (!box.isConnected) document.documentElement.appendChild(box);
+        box.textContent = seen.map(({ ctx, hint })=>{
+            const s = ctx.playbackStats;
+            const under = s ? `UNDERRUNS ${s.underrunEvents} / ${s.underrunDuration.toFixed(3)}S OF ${s.totalDuration.toFixed(0)}S` : "NO STATS";
+            return `${hint} ${ctx.state} ${Math.round(ctx.baseLatency * 1000)}+${Math.round((ctx.outputLatency || 0) * 1000)}MS ${under}`;
+        }).join("\n") || "NO AUDIO YET";
+    }, 500);
+}
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -14570,7 +14594,7 @@ class AudioEngine {
         if (this.loadingAudio[key]) return this.loadingAudio[key];
         const urls = AUDIO_URLS[key];
         if (!urls) return null;
-        const ctx = this.ensureCtx();
+        const ctx = this.ctx || this.ensureCtx();     // decoding doesn't need a running context
         this.loadingAudio[key] = (async ()=>{
             for (const url of urls)try {
                 const resp = await fetch(url);
@@ -14586,11 +14610,15 @@ class AudioEngine {
         delete this.loadingAudio[key];
         return result;
     }
-    // Preload rain and ocean audio in background (call early)
+    // Get ready without making any noise: the context sleeps until a session starts, so no output
+    // stream opens over the boot sounds. Rain and ocean decode to about 90 MB of samples, so that
+    // waits until the console has settled, runs one at a time, and stands aside for a session
+    // (a session that wants a bed fetches it itself).
     preload() {
-        this.ensureCtx();
-        this.fetchAudio("rain");
-        this.fetchAudio("ocean");
+        this.ensureCtx().suspend().catch(()=>{});
+        setTimeout(async ()=>{
+            for (const key of ["rain", "ocean"]) if (!this.playing) await this.fetchAudio(key);
+        }, 5000);
     }
     start(beat, carrier, mode, vol) {
         this.stop();
@@ -15965,10 +15993,21 @@ function AsciiWaveform({ beat, playing, width = 64 }) {
 }
 // Shared audio context for UI sounds
 let uiCtx = null;
+let uiSleepTimer = 0;
 function getUiCtx() {
-    if (!uiCtx) uiCtx = new AudioContext();
+    // "playback" = larger output buffers, as in AudioEngine: the default low-latency buffers
+    // underrun easily on a phone over Bluetooth, which is heard as static.
+    if (!uiCtx) uiCtx = new AudioContext({ latencyHint: "playback" });
+    clearTimeout(uiSleepTimer);
     if (uiCtx.state === "suspended") uiCtx.resume();
     return uiCtx;
+}
+// Close this context's output stream once UI sounds go quiet, so it doesn't run through a session
+function sleepUiCtxSoon() {
+    clearTimeout(uiSleepTimer);
+    uiSleepTimer = setTimeout(()=>{
+        if (uiCtx && uiCtx.state === "running") uiCtx.suspend().catch(()=>{});
+    }, 4000);
 }
 // UI click sound — low, muffled relay clunk
 function playClick() {
@@ -16002,6 +16041,7 @@ function playClick() {
     nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
     nSrc.connect(nLp).connect(nGain).connect(ctx.destination);
     nSrc.start(now);
+    sleepUiCtxSoon();
 }
 /* ═══════════════════════════════════════════════════════════
    BOOT — LANTERN-1, the threshold guidance system
@@ -16063,17 +16103,20 @@ function createBootAudio() {
         f.type = "bandpass";
         f.frequency.value = freq;
         f.Q.value = q;
-        g.gain.setValueAtTime(peak, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(peak, t + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.002 + dur);
         s.connect(f);
         f.connect(g);
         g.connect(bus);
         s.start(t);
-        s.stop(t + dur + 0.02);
+        s.stop(t + dur + 0.022);
     };
     return {
         powerOn () {
-            const t = ctx.currentTime + 0.02;
+            // Lead time: the first moments of a new output stream (and of a waking Bluetooth link)
+            // can glitch, so let them pass in silence.
+            const t = ctx.currentTime + 0.25;
             // relay clunk
             const k = ctx.createOscillator();
             const kg = ctx.createGain();
@@ -17192,7 +17235,15 @@ function Terminal() {
         const ctx = e.ctx;
         if (!ctx) return;
         const el = e.mediaEl;
-        const sync = ()=>setAudioState(ctx.state !== "running" ? ctx.state : el && el.paused ? "paused" : "running");
+        const apply = ()=>setAudioState(ctx.state !== "running" ? (e.playing ? ctx.state : "running") : el && el.paused ? "paused" : "running");
+        // The context sleeps until a session starts and takes a moment to wake, so only report a
+        // suspension that lasts.
+        let settle = 0;
+        const sync = ()=>{
+            clearTimeout(settle);
+            if (ctx.state === "running") apply();
+            else settle = setTimeout(apply, 1500);
+        };
         const onVisible = ()=>{
             if (document.visibilityState === "visible" && e.playing && ctx.state !== "running") ctx.resume().catch(()=>{});
         };
@@ -17203,6 +17254,7 @@ function Terminal() {
         }
         document.addEventListener("visibilitychange", onVisible);
         return ()=>{
+            clearTimeout(settle);
             ctx.removeEventListener("statechange", sync);
             if (el) {
                 el.removeEventListener("pause", sync);
