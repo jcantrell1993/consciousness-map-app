@@ -14729,6 +14729,36 @@ class AudioEngine {
         this.isoLfo.connect(shaper);
         this.isoLfo.start();
     }
+    // Sound check: a test tone through the same output path as a session, with a short fade.
+    // side "L" or "R" sounds one ear only; "both" plays carrier left and carrier + beat right.
+    startCheck(side, carrier, beat, vol) {
+        // Fade the previous test tone out quickly rather than cutting it, which would click.
+        if (this.checking && this.master) {
+            const old = this.master, oscs = [this.oscL, this.oscR];
+            old.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
+            setTimeout(()=>{
+                oscs.forEach((o)=>{
+                    try {
+                        o?.stop();
+                    } catch  {}
+                });
+                old.disconnect();
+            }, 150);
+            this.oscL = this.oscR = this.master = null;
+        }
+        this.stop();
+        const ctx = this.ensureCtx();
+        this.playing = true;
+        this.checking = true;
+        this.master = ctx.createGain();
+        this.master.gain.value = 0;
+        this.master.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
+        this.master.connect(this.sink);
+        this.playOutput();
+        this.startBinaural(ctx, carrier, beat, 1);
+        if (side === "L") this.gainR.gain.value = 0;
+        if (side === "R") this.gainL.gain.value = 0;
+    }
     // Generate a looping white noise buffer (base material for all noise types)
     makeWhiteNoise(seconds) {
         const ctx = this.ctx;
@@ -15383,6 +15413,7 @@ class AudioEngine {
     }
     stop() {
         this.playing = false;
+        this.checking = false;
         [
             this.oscL,
             this.oscR,
@@ -17492,6 +17523,71 @@ function SliderRow({ label, valueText, min, max, step, value, onChange, minText,
         style: { display: "flex", justifyContent: "space-between", fontSize: "11px", letterSpacing: "0.1em", color: "rgba(51,255,51,0.57)" }
     }, lh("span", null, minText), lh("span", null, maxText)), hint ? lh("div", { className: "guide", style: { marginTop: "4px", fontSize: "0.85em" } }, hint) : null, note ? lh("div", { className: "advisory", style: { marginTop: "4px" } }, note) : null);
 }
+/* ═════════════════════════════════════════════════
+   SOUND CHECK — stereo, beat and every preset carrier on the listener's own headphones.
+   Marks stay in this browser's localStorage.
+   ═════════════════════════════════════════════════ */
+const CHECK_KEY = "cmap.carrierCheck.v1";
+const CHECK_BEAT = 6;
+// Every carrier the app plays, with what plays it
+function checkCarriers() {
+    const uses = new Map();
+    const add = (c, who)=>{
+        if (!uses.has(c)) uses.set(c, new Set());
+        uses.get(c).add(who);
+    };
+    FOCUS.forEach((f)=>add(f.carrier, f.name.replace("FOCUS ", "F")));
+    Object.values(BANDS).forEach((b)=>add(b.carrier, b.label));
+    PRESETS.forEach((p)=>p.phases.forEach((ph)=>add(ph.carrier, p.name)));
+    return [...uses.entries()].sort((a, b)=>a[0] - b[0]).map(([carrier, who])=>({ carrier, uses: [...who] }));
+}
+function SoundCheck({ eng, volume, playing, stopAudio }) {
+    const [on, setOn] = _react.useState(null);
+    const [marks, setMarks] = _react.useState(()=>logReadJson(CHECK_KEY, {}));
+    const carriers = _react.useMemo(checkCarriers, []);
+    const onRef = _react.useRef(on);
+    onRef.current = on;
+    const quiet = ()=>{
+        const e = eng.current;
+        e.fadeOut(0.3);
+        setTimeout(()=>{
+            if (e.checking) e.stop();
+        }, 400);
+    };
+    // Leaving the view silences the test tone; a session or START takes the engine over.
+    _react.useEffect(()=>()=>{
+            if (onRef.current) quiet();
+        }, []);
+    _react.useEffect(()=>{
+        if (playing) setOn(null);
+    }, [playing]);
+    const sound = (id, side, carrier, beat)=>{
+        if (on === id) {
+            quiet();
+            setOn(null);
+            return;
+        }
+        if (playing) stopAudio();
+        eng.current.startCheck(side, carrier, beat, volume / 100);
+        setOn(id);
+    };
+    const mark = (c, v)=>{
+        const next = { ...marks };
+        if (next[c] === v) delete next[c];
+        else next[c] = v;
+        setMarks(next);
+        logWriteJson(CHECK_KEY, next);
+    };
+    const row = (id, label, right, desc, side, carrier, beat)=>lh(PickRow, { key: id, label, right, desc: on === id ? desc : null, active: on === id, onClick: ()=>sound(id, side, carrier, beat) });
+    const sub = (t)=>lh("div", { className: "tiny-label", style: { margin: "14px 0 4px" } }, t);
+    // The marks sit under the carrier that is sounding, where the thumb already is
+    const markRow = (c)=>lh("div", { className: "ctl-group", style: { margin: "4px 0 8px" } }, lh("span", { className: "ctl-label" }, `MARK ${c} HZ`), [
+            "clean",
+            "rough"
+        ].map((v)=>lh(Cmd, { key: v, label: v.toUpperCase(), active: marks[c] === v, onClick: ()=>mark(c, v) })));
+    const rough = carriers.filter((c)=>marks[c.carrier] === "rough").map((c)=>`${c.carrier} HZ`);
+    return lh(Section, { title: "SOUND CHECK" }, lh("div", { className: "guide" }, "HEADPHONES ON, AT THE VOLUME YOU LIE DOWN WITH. TOUCH A LINE TO SOUND IT, AGAIN TO STOP."), sub("1 · CHANNELS"), row("L", "LEFT EAR", "300 HZ", "ONLY IN THE LEFT EAR: GOOD. IN BOTH EARS: ANDROID MONO AUDIO IS ON. ONLY ON THE RIGHT: THE HEADPHONES ARE ON BACKWARDS.", "L", 300, 0), row("R", "RIGHT EAR", "300 HZ", "ONLY IN THE RIGHT EAR: GOOD. IN BOTH EARS: ANDROID MONO AUDIO IS ON. ONLY ON THE LEFT: THE HEADPHONES ARE ON BACKWARDS.", "R", 300, 0), sub("2 · BEAT"), row("beat", "BINAURAL BEAT", "200 · 204 HZ", "A SLOW WOBBLE INSIDE THE HEAD. LIFT ONE EARCUP AND IT SHOULD STOP. IF IT GOES ON, THE EARS ARE BEING MIXED: CHECK MONO AUDIO, SPATIAL AUDIO AND HEADPHONE EFFECTS.", "both", 200, 4), sub(`3 · CARRIERS · ${CHECK_BEAT} HZ BEAT`), lh("div", { className: "guide", style: { marginBottom: "4px" } }, "EVERY CARRIER THE PRESETS USE. LISTEN FOR HUM, BUZZ, RATTLE, HISS, OR ONE EAR LOUDER. MARK EACH ONE."), carriers.map((c)=>lh(_react.Fragment, { key: c.carrier }, row("c" + c.carrier, `${c.carrier} HZ`, marks[c.carrier] ? marks[c.carrier].toUpperCase() : "—", `USED BY ${c.uses.join(", ")}`, "both", c.carrier, CHECK_BEAT), on === "c" + c.carrier && markRow(c.carrier))), rough.length > 0 && lh("div", { className: "advisory", style: { marginTop: "10px" } }, `MARKED ROUGH: ${rough.join(", ")}. SET THE HEADPHONE EQ FLAT AND TRY NOISE CANCELLING OFF, THEN LISTEN AGAIN.`));
+}
 function Terminal() {
     const eng = (0, _react.useRef)(new AudioEngine());
     const [playing, setPlaying] = (0, _react.useState)(false);
@@ -17575,7 +17671,7 @@ function Terminal() {
     const startAudio = (0, _react.useCallback)((b, c)=>{
         const e = eng.current;
         if (fadeRef.current) clearTimeout(fadeRef.current);
-        if (e.playing) e.setFrequencies(b, c);
+        if (e.playing && !e.checking) e.setFrequencies(b, c);
         else {
             e.start(b, c, mode, volume / 100);
             e.setAmbient(ambient);
@@ -17721,7 +17817,8 @@ function Terminal() {
         ["brainwave", "BRAINWAVES"],
         ["sessions", "SESSIONS"],
         ["log", "LOG"],
-        ["custom", "CUSTOM"]
+        ["custom", "CUSTOM"],
+        ["check", "SOUND CHECK"]
     ];
     return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, voice, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: saying.text, src: saying.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
         beat,
@@ -17784,7 +17881,7 @@ function Terminal() {
             setOmOn(next);
             eng.current.setOm(next);
         }
-    }))), lh("div", { style: { display: "flex", flexWrap: "wrap", gap: "0", margin: "6px 0 4px", paddingTop: "10px", borderTop: "1px solid rgba(51,255,51,0.15)" } }, tabs.map(([v, label])=>lh(Cmd, { key: v, label, active: view === v, onClick: ()=>setView(v) }))), view === "main" && lh(Section, { title: "ORIENTATION" }, guide("FOCUS LEVELS", "MONROE-MAPPED STATES, F10 TO F27"), guide("BRAINWAVES", "STANDARD BANDS, DELTA TO GAMMA"), guide("SESSIONS", "GUIDED DESCENTS, PHASE BY PHASE"), guide("LOG", "MARK WHAT YOU NOTICE; KEEP A FIELD NOTE"), guide("CUSTOM", "TUNE BEAT AND CARRIER BY HAND"), guide("DIM", "BLACK OUT THE SCREEN; MARKS STAY TAPPABLE"), guide("VOICE", "SAYINGS AND DIRECTIONS FROM DREAM YOGA, SHAMANIC JOURNEYING AND OTHER TRADITIONS, EACH CREDITED"), lh("div", { className: "advisory", style: { marginTop: "12px" } }, "ADVISORY: BEFORE YOU LIE DOWN — DO NOT DISTURB ON · HEADPHONE EQ FLAT, BASS BOOST OFF · ANDROID MONO AUDIO OFF"), lh("div", { className: "advisory" }, "NOTE: BINAURAL BEATS ARE IMPERCEPTIBLE ABOVE ~30 HZ. FOR GAMMA, USE ISOCHRONIC OR BOTH."), lh("div", { className: "advisory" }, "NOTE: CARRIERS ARE LOW, SOFT PRESETS. IN CUSTOM, ~400 HZ MAY MAKE THE BEAT EASIER TO HEAR.")), view === "focus" && lh(Section, { title: "SOUNDING DEPTH LEVELS" }, lh("div", { className: "guide", style: { marginBottom: "6px" } }, "CHOOSE A LEVEL. I WILL TAKE YOU THERE."), FOCUS.map((fl)=>{
+    }))), lh("div", { style: { display: "flex", flexWrap: "wrap", gap: "0", margin: "6px 0 4px", paddingTop: "10px", borderTop: "1px solid rgba(51,255,51,0.15)" } }, tabs.map(([v, label])=>lh(Cmd, { key: v, label, active: view === v, onClick: ()=>setView(v) }))), view === "main" && lh(Section, { title: "ORIENTATION" }, guide("FOCUS LEVELS", "MONROE-MAPPED STATES, F10 TO F27"), guide("BRAINWAVES", "STANDARD BANDS, DELTA TO GAMMA"), guide("SESSIONS", "GUIDED DESCENTS, PHASE BY PHASE"), guide("LOG", "MARK WHAT YOU NOTICE; KEEP A FIELD NOTE"), guide("CUSTOM", "TUNE BEAT AND CARRIER BY HAND"), guide("SOUND CHECK", "STEREO, BEAT AND CARRIERS ON YOUR HEADPHONES"), guide("DIM", "BLACK OUT THE SCREEN; MARKS STAY TAPPABLE"), guide("VOICE", "SAYINGS AND DIRECTIONS FROM DREAM YOGA, SHAMANIC JOURNEYING AND OTHER TRADITIONS, EACH CREDITED"), lh("div", { className: "advisory", style: { marginTop: "12px" } }, "ADVISORY: BEFORE YOU LIE DOWN — DO NOT DISTURB ON · HEADPHONE EQ FLAT, BASS BOOST OFF · ANDROID MONO AUDIO OFF"), lh("div", { className: "advisory" }, "NOTE: BINAURAL BEATS ARE IMPERCEPTIBLE ABOVE ~30 HZ. FOR GAMMA, USE ISOCHRONIC OR BOTH."), lh("div", { className: "advisory" }, "NOTE: CARRIERS ARE LOW, SOFT PRESETS. IN CUSTOM, ~400 HZ MAY MAKE THE BEAT EASIER TO HEAR.")), view === "focus" && lh(Section, { title: "SOUNDING DEPTH LEVELS" }, lh("div", { className: "guide", style: { marginBottom: "6px" } }, "CHOOSE A LEVEL. I WILL TAKE YOU THERE."), FOCUS.map((fl)=>{
         const on = activeName.startsWith(fl.name) && playing;
         return lh(PickRow, {
             key: fl.id,
@@ -17861,7 +17958,7 @@ function Terminal() {
             setActiveName("CUSTOM " + beat.toFixed(1) + "HZ");
             startAudio(beat, carrier);
         }
-    })), view === "log" && lh(LogPanel, { log, voice }), lh("div", { style: { marginTop: "26px", paddingTop: "8px", borderTop: "1px solid rgba(51,255,51,0.15)", fontSize: "12px", letterSpacing: "0.08em", color: "rgba(51,255,51,0.54)" } }, `LANTERN-1 · CONSCIOUSNESS MAP · ${new Date().getFullYear()} · ALL SYSTEMS NOMINAL`)));
+    })), view === "check" && lh(SoundCheck, { eng, volume, playing, stopAudio }), view === "log" && lh(LogPanel, { log, voice }), lh("div", { style: { marginTop: "26px", paddingTop: "8px", borderTop: "1px solid rgba(51,255,51,0.15)", fontSize: "12px", letterSpacing: "0.08em", color: "rgba(51,255,51,0.54)" } }, `LANTERN-1 · CONSCIOUSNESS MAP · ${new Date().getFullYear()} · ALL SYSTEMS NOMINAL`)));
 }
 function App() {
     const [booted, setBooted] = (0, _react.useState)(false);

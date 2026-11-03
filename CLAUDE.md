@@ -44,6 +44,7 @@ Search by name. Line numbers are approximate, as of commit fbe0b22.
 | `useVoiceCapture`, `useVoiceHold`, `pickVoiceMic` | search | optional hold-to-speak notes, stored in IndexedDB. Prefers the phone's mic, because a Bluetooth headset's mic can drop the headphones to mono call audio |
 | `seamlessLoop`, `crossfadeLoop`, `bedGain` | search | make beds loop with no gap and sit at one level (`BED_RMS`) |
 | `useWakeLock` | 16928 | screen wake lock |
+| `SoundCheck`, `checkCarriers`, `CHECK_KEY`, `startCheck` | search | the SOUND CHECK view: left/right tones, a binaural beat, and every carrier the presets use, each markable CLEAN or ROUGH (kept in localStorage). `AudioEngine.startCheck` plays through the same output path as a session, with a short fade; `engine.checking` marks a test tone so START replaces it rather than gliding it |
 | `Terminal` | 17162 | the console: views, readout, commands |
 
 ## Conventions
