@@ -16865,6 +16865,13 @@ const LOG_DEPTHS = [
     ["f10held", "F10 HELD"],
     ["f12", "F12+"]
 ];
+// When the session fell relative to sleep; the export's frontmatter keys are the ids.
+const LOG_SLEEP = [
+    ["before-sleep", "BEFORE SLEEP"],
+    ["back-to-bed", "WOKE, BACK TO BED"],
+    ["on-waking", "ON WAKING"],
+    ["daytime", "DAYTIME"]
+];
 const logMarkerLabel = (type)=>(LOG_MARKERS.find((m)=>m.type === type) || { label: type.toUpperCase() }).label;
 const logDepthLabel = (id)=>(LOG_DEPTHS.find((d)=>d[0] === id) || [ , "" ])[1];
 const logClock = (s)=>`${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -16920,6 +16927,14 @@ function logToMarkdown(l) {
     const n = l.note || {};
     const checks = n.checks || {};
     const out = [];
+    // Frontmatter for tallying notes together; keys match field-notes/template.md.
+    const snaps = l.stimulus.filter((s)=>s.snap).map((s)=>s.snap);
+    const source = snaps.length ? "app" : n.technique === "Voice note" && !l.markers.length ? "voice" : "external";
+    const marks = {};
+    l.markers.forEach((m)=>{
+        marks[m.type] = (marks[m.type] || 0) + 1;
+    });
+    out.push("---", `date: ${date}`, `start: "${logPad(hr)}:${logPad(d.getMinutes())}"`, `minutes: ${mins}`, `sleep: ${n.sleep || ""}`, `slept_h: ${n.sleptH || ""}`, `source: ${source}`, `audio: ${JSON.stringify([...new Set(snaps.map((s)=>s.name || "manual"))])}`, `depth: ${n.depth || ""}`, `landmarks: ${JSON.stringify(LOG_CHECKS.map(([k])=>k).filter((k)=>checks[k]))}`, `marks: ${JSON.stringify(marks)}`, "---", "");
     out.push(`# Field Note — ${date}`, "", "## Date & Time", `**Date:** ${date}`, `**Time:** ${logPad(hr)}:${logPad(d.getMinutes())} (${period})`, `**Session length:** ~${mins} min`, "");
     out.push("## Technique / Context", n.technique || "", "");
     out.push("## Pre-State", n.preState || "", "");
@@ -17340,7 +17355,7 @@ function LogEditor({ log, entry }) {
     const n = entry.note || {};
     const set = (patch)=>log.updateNote(entry.id, patch);
     const mins = Math.max(1, Math.round((entry.endedAt - entry.startedAt) / 60000));
-    return lh("div", { style: { border: "1px solid #33ff3340", padding: "10px", marginBottom: "12px" } }, lh("div", { style: { color: "#33ff33", marginBottom: "8px" } }, `FIELD NOTE — ${new Date(entry.startedAt).toLocaleString()} — ~${mins} MIN`), lh(LogField, { label: "TECHNIQUE / CONTEXT" }, lh("input", { type: "text", value: n.technique || "", onChange: (e)=>set({ technique: e.target.value }), style: logInputStyle })), lh(LogField, { label: "PRE-STATE (BODY, MIND, WHAT YOU BROUGHT IN)" }, lh("textarea", { rows: 2, value: n.preState || "", onChange: (e)=>set({ preState: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHAT HAPPENED (CAPTURE THE TEXTURE FIRST)" }, lh("textarea", { rows: 6, value: n.what || "", onChange: (e)=>set({ what: e.target.value }), style: logInputStyle })), lh(LogField, { label: "SELF-RATED DEPTH" }, LOG_DEPTHS.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.depth === id, onClick: ()=>set({ depth: n.depth === id ? "" : id }) }))), lh(LogField, { label: "PHENOMENA (PRE-CHECKED FROM YOUR MARKS)" }, LOG_CHECKS.map(([k, label])=>lh(LogBtn, { key: k, label: label.split(" (")[0].toUpperCase(), active: !!(n.checks && n.checks[k]), onClick: ()=>set({ checks: { ...n.checks, [k]: !(n.checks && n.checks[k]) } }) }))), lh(LogField, { label: "WHAT STOPPED IT / HOW IT ENDED" }, lh("textarea", { rows: 2, value: n.ended || "", onChange: (e)=>set({ ended: e.target.value }), style: logInputStyle })), lh(LogField, { label: "NOTES FOR NEXT SESSION" }, lh("textarea", { rows: 2, value: n.next || "", onChange: (e)=>set({ next: e.target.value }), style: logInputStyle })), lh(LogBtn, { label: "SAVE & CLOSE", onClick: ()=>log.setEditingId(null) }), lh(LogBtn, { label: "DOWNLOAD .MD", onClick: ()=>logDownload(`${logFileStamp(entry)}.md`, logToMarkdown(entry)) }));
+    return lh("div", { style: { border: "1px solid #33ff3340", padding: "10px", marginBottom: "12px" } }, lh("div", { style: { color: "#33ff33", marginBottom: "8px" } }, `FIELD NOTE — ${new Date(entry.startedAt).toLocaleString()} — ~${mins} MIN`), lh(LogField, { label: "TECHNIQUE / CONTEXT" }, lh("input", { type: "text", value: n.technique || "", onChange: (e)=>set({ technique: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHEN, AROUND SLEEP" }, LOG_SLEEP.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.sleep === id, onClick: ()=>set({ sleep: n.sleep === id ? "" : id }) }))), lh(LogField, { label: "HOURS SLEPT BEFORE (IF ANY)" }, lh("input", { type: "number", inputMode: "decimal", min: 0, max: 14, step: 0.5, value: n.sleptH || "", onChange: (e)=>set({ sleptH: e.target.value }), style: logInputStyle })), lh(LogField, { label: "PRE-STATE (BODY, MIND, WHAT YOU BROUGHT IN)" }, lh("textarea", { rows: 2, value: n.preState || "", onChange: (e)=>set({ preState: e.target.value }), style: logInputStyle })), lh(LogField, { label: "WHAT HAPPENED (CAPTURE THE TEXTURE FIRST)" }, lh("textarea", { rows: 6, value: n.what || "", onChange: (e)=>set({ what: e.target.value }), style: logInputStyle })), lh(LogField, { label: "SELF-RATED DEPTH" }, LOG_DEPTHS.map(([id, label])=>lh(LogBtn, { key: id, label, active: n.depth === id, onClick: ()=>set({ depth: n.depth === id ? "" : id }) }))), lh(LogField, { label: "PHENOMENA (PRE-CHECKED FROM YOUR MARKS)" }, LOG_CHECKS.map(([k, label])=>lh(LogBtn, { key: k, label: label.split(" (")[0].toUpperCase(), active: !!(n.checks && n.checks[k]), onClick: ()=>set({ checks: { ...n.checks, [k]: !(n.checks && n.checks[k]) } }) }))), lh(LogField, { label: "WHAT STOPPED IT / HOW IT ENDED" }, lh("textarea", { rows: 2, value: n.ended || "", onChange: (e)=>set({ ended: e.target.value }), style: logInputStyle })), lh(LogField, { label: "NOTES FOR NEXT SESSION" }, lh("textarea", { rows: 2, value: n.next || "", onChange: (e)=>set({ next: e.target.value }), style: logInputStyle })), lh(LogBtn, { label: "SAVE & CLOSE", onClick: ()=>log.setEditingId(null) }), lh(LogBtn, { label: "DOWNLOAD .MD", onClick: ()=>logDownload(`${logFileStamp(entry)}.md`, logToMarkdown(entry)) }));
 }
 function LogPanel({ log, voice }) {
     const day = 86400000;
