@@ -45,6 +45,7 @@ Search by name. Line numbers are approximate, as of commit fbe0b22.
 | `seamlessLoop`, `crossfadeLoop`, `bedGain` | search | make beds loop with no gap and sit at one level (`BED_RMS`) |
 | `useWakeLock` | 16928 | screen wake lock |
 | `SoundCheck`, `checkCarriers`, `CHECK_KEY`, `startCheck` | search | the SOUND CHECK view: left/right tones, a binaural beat, and every carrier the presets use, each markable CLEAN or ROUGH (kept in localStorage). `AudioEngine.startCheck` plays through the same output path as a session, with a short fade; `engine.checking` marks a test tone so START replaces it rather than gliding it |
+| `scheduleCues`, `setLevel`, `CUE_GAIN`, BEDTIME preset | search | the bedtime lucid-dream session. Phases may carry `cues` (seconds into the phase, put on the audio clock when the session starts), `cueText` and `guide` (lines that replace the sayings), `level` (times the volume setting) and `ramp: "phase"` (glide tone and level over the whole phase). The cue is the LANTERN ping, sent to the sink after the session level |
 | `Terminal` | 17162 | the console: views, readout, commands |
 
 ## Conventions
