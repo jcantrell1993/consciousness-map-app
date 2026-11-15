@@ -14491,6 +14491,67 @@ const PRESETS = [
                 minutes: 20
             }
         ]
+    },
+    // Bedtime lucid-dream session (design notes: design/lucid-session in the notes repo). Pair the
+    // cue with a reality check while awake, set a MILD intention, then descend through the
+    // hypnagogic range and fade to silence. Phase fields used only here: `cues` (seconds into the
+    // phase), `cueText` (shown for a few seconds after each cue), `guide` (lines by time, which
+    // replace the sayings), `level` (times the volume setting) and `ramp: "phase"` (glide the tone
+    // and level over the whole phase instead of the usual short glide).
+    {
+        id: "bd",
+        name: "BEDTIME",
+        desc: "LUCID INTENTION, THEN DOWN INTO SLEEP. FADES TO SILENCE.",
+        phases: [
+            {
+                label: "CUE",
+                beat: 10,
+                carrier: 235,
+                minutes: 4,
+                cues: [20, 60, 100, 140, 180, 220],
+                cueText: { text: "AM I DREAMING? CHECK.", src: "LUCID DREAM PRACTICE" },
+                guide: [
+                    { at: 0, text: "AT THE SIGNAL, ASK HONESTLY. FEEL THE BED. HEAR THE ROOM.", src: "LUCID DREAM PRACTICE" }
+                ]
+            },
+            {
+                label: "INTENT",
+                beat: 10,
+                carrier: 235,
+                minutes: 4,
+                guide: [
+                    { at: 0, text: "RECALL A RECENT DREAM. ANY FRAGMENT WILL DO.", src: "MILD, AFTER STEPHEN LABERGE" },
+                    { at: 60, text: "FIND THE MOMENT IT TURNED STRANGE.", src: "MILD, AFTER STEPHEN LABERGE" },
+                    { at: 120, text: "SEE YOURSELF THERE, REALIZING: THIS IS A DREAM.", src: "MILD, AFTER STEPHEN LABERGE" },
+                    { at: 180, text: "NEXT TIME I'M DREAMING, I WILL KNOW I'M DREAMING.", src: "MILD, AFTER STEPHEN LABERGE" }
+                ]
+            },
+            {
+                label: "DESCENT",
+                beat: 5,
+                carrier: 185,
+                minutes: 22,
+                ramp: "phase",
+                guide: [
+                    { at: 0, until: 120, text: "HOLD THE INTENTION AS YOU FALL ASLEEP.", src: "MILD, AFTER STEPHEN LABERGE" }
+                ]
+            },
+            {
+                label: "THRESHOLD",
+                beat: 5,
+                carrier: 185,
+                minutes: 20,
+                level: 0.6
+            },
+            {
+                label: "FADE",
+                beat: 5,
+                carrier: 185,
+                minutes: 10,
+                level: 0,
+                ramp: "phase"
+            }
+        ]
     }
 ];
 /* ═══════════════════════════════════════════════════════════
@@ -14513,6 +14574,8 @@ const FADE_IN_SECONDS = 8;
 // reach ~1.03). The input is pre-scaled by LIMITER_PRE so raw peaks up to 1/LIMITER_PRE
 // fit in the shaper's [-1, 1] range.
 const LIMITER_PRE = 0.75;
+// Lucid cue peak, relative to the volume setting (tones sit at the volume setting per ear)
+const CUE_GAIN = 0.8;
 function softLimitCurve() {
     const n = 4097, knee = 0.9, ceil = 0.99;
     const curve = new Float32Array(n);
@@ -14621,7 +14684,62 @@ class AudioEngine {
         if (this.mediaEl && this.mediaEl.paused) this.mediaEl.play().catch(()=>{});
     }
     fadeOut(seconds) {
-        if (this.master && this.ctx) this.master.gain.setTargetAtTime(0, this.ctx.currentTime, seconds / 4);
+        if (!this.master || !this.ctx) return;
+        // Cancel any level ramp still scheduled (a session's slow fade), or it would take over again.
+        const g = this.master.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.setTargetAtTime(0, t, seconds / 4);
+    }
+    // A session phase can sit quieter than the volume setting, or fade to silence over its length.
+    // The level multiplies the volume; ramps are exponential so a long fade sounds even all the way.
+    setLevel(level, seconds = 60) {
+        this._level = level;
+        if (!this.master || !this.ctx) return;
+        const g = this.master.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(Math.max(1e-4, g.value), t);
+        g.exponentialRampToValueAtTime(Math.max(1e-4, this._vol * level), t + Math.max(0.1, seconds));
+    }
+    // The lucid cue: the LANTERN sonar ping (A4 with its octave) and two echoes, scheduled on the
+    // audio clock so it lands on time with the screen off. It goes to the sink, after the session
+    // level, so a quiet phase doesn't bury it; it follows the volume setting instead.
+    scheduleCues(offsets) {
+        const ctx = this.ctx;
+        if (!ctx || !this.sink) return;
+        const now = ctx.currentTime;
+        const peak = Math.max(0.02, this._vol) * CUE_GAIN;
+        const voice = (f, t, p, decay)=>{
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.type = "sine";
+            o.frequency.value = f;
+            g.gain.setValueAtTime(1e-4, t);
+            g.gain.linearRampToValueAtTime(p, t + 0.006);
+            g.gain.exponentialRampToValueAtTime(1e-4, t + 0.006 + decay);
+            o.connect(g);
+            g.connect(this.sink);
+            o.start(t);
+            o.stop(t + decay + 0.05);
+            this.cueNodes.push(o);
+            o.onended = ()=>{
+                g.disconnect();
+                const i = this.cueNodes.indexOf(o);
+                if (i >= 0) this.cueNodes.splice(i, 1);
+            };
+        };
+        for (const s of offsets) {
+            const t = now + s;
+            [1, 0.36, 0.13].forEach((e, k)=>{
+                voice(440, t + k * 0.31, peak * e, 1.7);
+                voice(880, t + k * 0.31, peak * e * 0.25, 0.9);
+            });
+        }
+    }
+    cancelCues() {
+        for (const o of this.cueNodes.splice(0)) try {
+            o.stop();
+        } catch  {}
     }
     // Fetch and decode an audio file from CDN, with fallback URLs. Caches result.
     async fetchAudio(key) {
@@ -14659,6 +14777,8 @@ class AudioEngine {
         this.stop();
         const ctx = this.ensureCtx();
         this.playing = true;
+        this._vol = vol;
+        this._level = 1;
         this.master = ctx.createGain();
         this.master.gain.value = 0;
         this.master.gain.setTargetAtTime(vol, ctx.currentTime, FADE_IN_SECONDS / 3);
@@ -14750,6 +14870,8 @@ class AudioEngine {
         const ctx = this.ensureCtx();
         this.playing = true;
         this.checking = true;
+        this._vol = vol;
+        this._level = 1;
         this.master = ctx.createGain();
         this.master.gain.value = 0;
         this.master.gain.setTargetAtTime(vol, ctx.currentTime, 0.05);
@@ -15392,7 +15514,12 @@ class AudioEngine {
         if (this.playing) this.startAmbient();
     }
     setVolume(v) {
-        if (this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+        this._vol = v;
+        if (!this.master) return;
+        const g = this.master.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(g.value, t);
+        g.setTargetAtTime(v * this._level, t, 0.05);
     }
     // Glide to a new beat/carrier over `seconds`. Each ramp is anchored at the current value;
     // a bare linearRamp would interpolate from the parameter's last event, which can be
@@ -15414,6 +15541,7 @@ class AudioEngine {
     stop() {
         this.playing = false;
         this.checking = false;
+        this.cancelCues();
         [
             this.oscL,
             this.oscR,
@@ -15491,6 +15619,10 @@ class AudioEngine {
         this.omEnabled = false;
         this.omGain = null;
         this.omNodes = [];
+        // Session level and lucid cues
+        this._vol = 0;
+        this._level = 1;
+        this.cueNodes = [];
     }
 }
 /* ═══════════════════════════════════════════════════════════
@@ -17737,6 +17869,15 @@ function Terminal() {
         setBeat(p0.beat);
         setCarrier(p0.carrier);
         setPlaying(true);
+        // Lucid cues go on the audio clock up front, so screen-off timer throttling can't delay them
+        const cueAt = [];
+        preset.phases.reduce((acc, p)=>{
+            (p.cues || []).forEach((s)=>cueAt.push(acc + s));
+            return acc + p.minutes * 60;
+        }, 0);
+        if (cueAt.length) eng.current.scheduleCues(cueAt);
+        const levels = preset.phases.some((p)=>p.level !== undefined);
+        let shown = -1;
         // Phase is derived from wall-clock time, not tick counts: Android throttles timers
         // when the screen is dim or the page is backgrounded, and counted ticks would drift.
         const t0 = Date.now();
@@ -17760,14 +17901,31 @@ function Terminal() {
                 return;
             }
             setPhaseElapsed(total - acc);
+            const nx = preset.phases[idx];
+            const whole = nx.ramp === "phase";
             if (idx !== ci) {
                 ci = idx;
                 setPhaseIdx(idx);
-                const nx = preset.phases[idx];
-                // Glide between phases (up to 30s) rather than stepping the tone.
-                eng.current.setFrequencies(nx.beat, nx.carrier, Math.min(30, nx.minutes * 15));
-                setBeat(nx.beat);
-                setCarrier(nx.carrier);
+                // Glide between phases (up to 30s) rather than stepping the tone, or over the
+                // whole phase for a slow descent.
+                eng.current.setFrequencies(nx.beat, nx.carrier, whole ? nx.minutes * 60 : Math.min(30, nx.minutes * 15));
+                if (levels) eng.current.setLevel(nx.level ?? 1, whole ? nx.minutes * 60 : 60);
+                shown = -1;
+                if (!whole) {
+                    setBeat(nx.beat);
+                    setCarrier(nx.carrier);
+                }
+            }
+            // During a whole-phase glide, show where the tone is in ten steps (each step lands in
+            // the session log as an audio change, so not every second).
+            const pv = preset.phases[idx - 1];
+            if (whole && pv) {
+                const step = Math.min(10, Math.floor((total - acc) / (nx.minutes * 6)));
+                if (step !== shown) {
+                    shown = step;
+                    setBeat(Math.round((pv.beat + (nx.beat - pv.beat) * step / 10) * 10) / 10);
+                    setCarrier(Math.round(pv.carrier + (nx.carrier - pv.carrier) * step / 10));
+                }
             }
         }, 1000);
     }, [
@@ -17795,6 +17953,18 @@ function Terminal() {
         voiceTag,
         sessionOn ? phaseIdx : -1
     ]);
+    // A phase with its own guidance (the bedtime session) speaks that instead of a saying: the
+    // cue line for a few seconds after each cue, otherwise the latest guide line that applies.
+    const guidePhase = sessionOn && sessionPreset ? sessionPreset.phases[phaseIdx] : null;
+    const guideLine = (()=>{
+        if (!guidePhase) return null;
+        const t = phaseElapsed;
+        if (guidePhase.cueText && (guidePhase.cues || []).some((c)=>t >= c && t < c + 8)) return guidePhase.cueText;
+        let line = null;
+        for (const g of guidePhase.guide || []) if (t >= g.at && t < (g.until ?? Infinity)) line = g;
+        return line;
+    })();
+    const spoken = guideLine || saying;
     const rows = [
         { label: "STATE", value: playing ? "ACTIVE" : "STANDBY" },
         { label: "BEAT", value: `${beat.toFixed(1)} HZ` },
@@ -17820,7 +17990,7 @@ function Terminal() {
         ["custom", "CUSTOM"],
         ["check", "SOUND CHECK"]
     ];
-    return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, voice, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: saying.text, src: saying.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
+    return lh("div", { className: dim ? "min-h-screen crt-screen" : "min-h-screen crt-screen screen-flicker", style: { background: "#0a0a0a" } }, !dim && lh("div", { className: "scanlines" }), !dim && lh("div", { className: "screen-static" }), dim && lh(DimOverlay, { log, voice, onExit: ()=>setDim(false) }), lh("div", { className: "relative z-10 max-w-3xl mx-auto px-6 py-5", style: { fontSize: "14px" } }, lh(Nameplate, { lit: playing ? depthRings(beat) : 0, scope: !dim }), lh("div", { className: "sect-rule", style: { margin: "10px 0 0" } }), lh(VoiceLine, { text: spoken.text, src: spoken.src }), lh(Readout, { rows }), alerts, lh("div", { style: { margin: "8px 0 10px" } }, lh("div", { className: "tiny-label" }, "WAVEFORM"), lh(AsciiWaveform, {
         beat,
         playing,
         width: IS_MOBILE ? Math.min(38, Math.floor((window.innerWidth - 40) / 9)) : 58
